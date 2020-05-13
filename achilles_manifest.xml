@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+	<remote fetch="https://github.com" name="github_altera"/>
+	<remove-project name="kraj/meta-altera" />
+	<remove-project name="linux4sam/meta-atmel" />
+
+	<project remote="github_altera"  name="kraj/meta-altera" path="layers/meta-altera" revision="master"/>
+	<project remote="github_altera"  name="reflexces/meta-achilles" path="layers/meta-achilles" revision="warrior" upstream="master"/>
+</manifest>
+

@@ -1,0 +1,528 @@
+#!/bin/bash
+#
+# MIT License
+# Copyright (c) 2020 REFLEX CES
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Author: Dan Negvesky <dnegvesky@reflexces.com>
+# Contributors:
+#
+# Release info:
+#
+# 2019.05
+#   - initial release for REFLEX CES COMXpressSX Stratix 10 module
+#
+# 2020.05
+#   - updated for release for REFLEX CES Achilles SOM, Angstrom v2019.06-warrior 
+#
+# TODO: add dependecy checking to this sript (currently in yocto-packages.sh because the installation
+#       of packages, if necessary, requires root privileges); this script cannot run as root
+# TODO: add parameters to allow for more build customization (u-boot & kernel version, etc)
+#       pass arguments to variables that are written to Yocto config files
+# TODO: add better flow control: if BUILD_DIR exists then skip the setup and go right to bitbake
+#
+
+#################################################
+# Variables
+#################################################
+
+# Script version variables
+YOCTO_REL=2.7
+YOCTO_CODENAME=warrior
+ANGSTROM_VER="v2019.06"
+SCRIPT_VERSION="Yocto ${YOCTO_REL} Build Script"
+
+# Other configuration variables
+# set a default board for the build, can be changed with -b option
+BOARD=achilles
+BOARD_LONG="not specified"
+BUILD_DIR=angstrom-$ANGSTROM_VER-yocto$YOCTO_REL
+UBOOT_VER=2019.10
+KERNEL_VER=4.14.130-ltsi
+QTS_VER=N/A
+GHRD_BRANCH=N/A
+BUILD_IMG=console
+IMG_SIZE=16
+
+# Color text formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+ORANGE='\033[0;33m'
+BLUE='\033[1;34m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m' # Not good for white terminal background
+NC='\033[0m' # No Color
+
+#################################################
+# Functions
+#################################################
+
+usage()
+{
+    echo "Usage: ./reflex-yocto-build [options]"
+    echo "Yocto Project build script for ${ANGSTROM_VER}"
+    echo "Options:"
+    echo "  -b, --board [board name]       Target development board.  Currently supported boards:"
+    echo "                                   achilles"
+    echo "                                   alaric"
+    echo "                                   comxpress"
+    echo ""
+    echo "  -d, --directory [dir name]     Build directory name"
+    echo "                                 If not specified, defaults to"
+    echo "                                 angstrom-${ANGSTROM_VER}-yocto${YOCTO_REL}"
+    echo ""
+    echo "  -i, --image [image name]       Only these images names are valid:"
+    echo "                                   xfce (XFCE graphical desktop, default if image not specified)"
+    echo "                                   console (console applications only)"
+    echo "                                   uboot (builds U-Boot bootloader only)"
+    echo "                                   kernel (builds linux kernel only)"
+    echo ""
+    echo "  -m, --menu                     Run the script in interactive menu mode."
+    echo ""
+    echo "  -h, --help                     Display this help message and exit."
+    echo ""
+    echo "  -v, --version                  Display script version info and exit."
+    echo ""
+}
+
+check_disk_space()
+{
+    # assuming OK to work in GB due to large image and HDD sizes
+    FREE_SPACE=`df --block-size=1G $PWD | awk '/[0-9]%/{print $(NF-2)}'`
+
+    echo -e ${GREEN}
+    printf "\n*******************************************************************\n"
+    printf " Checking available disk space... \n"
+    printf "*******************************************************************\n"
+    echo -e ${NC}
+    sleep 1
+    if [ "$FREE_SPACE" -lt "$IMG_SIZE" ]; then
+        printf "Available: ${FREE_SPACE} GB\n"
+        printf "Required: ${IMG_SIZE} GB\n"
+        printf "Please free at least $(($IMG_SIZE - $FREE_SPACE)) GB and then rerun the build script.\n"
+        exit 1
+    else
+        printf "OK\n"
+    fi
+
+FREE_SPACE=`df --block-size=1G $PWD | awk '/[0-9]%/{print $(NF-2)}'`
+}
+
+# On new installations of git, make sure it has been configured with
+# user's name and e-mail.
+check_git_config()
+{
+    echo -e ${GREEN}
+    printf "\n*******************************************************************\n"
+    printf " Checking git global configuration... \n"
+    printf "*******************************************************************\n"
+    echo -e ${NC}
+    sleep 2
+    if [[ ! $(git config user.name) || ! $(git config user.email) ]]; then
+        printf "\nIt appears that git has not yet been configured with"
+        printf "\nyour name or e-mail address (this is required for repo)."
+        printf "\nI can set this up for you.\n"
+        correct=false
+        fix_name=false
+        fix_email=false
+        while ! $correct; do
+            # don't accept blank name
+            while [[ -z $GIT_NAME ]] || $fix_name; do
+                printf "Please enter your first and last name (e.g. John Doe): "
+                read GIT_NAME
+                fix_name=false
+            done
+            # don't accept blank e-mail
+            while [[ -z $GIT_EMAIL ]] || $fix_email; do
+                printf "Please enter your e-mail address (e.g. username@domain): "
+                read GIT_EMAIL
+                fix_email=false
+            done
+            # verify entries
+            printf "\nYou have entered your name as: ${GIT_NAME}"
+            printf "\nYou have entered your e-mail as: ${GIT_EMAIL}"
+            printf "\n\nIs this correct? "
+            read -r -p "[Y to proceed / N to fix Name / E to fix e-mail / B to fix both Name and e-mail] " correct
+                case "$correct" in
+                    [yY][eE][sS]|[yY])
+                        correct=true
+                    ;;
+                    [nN])
+                        correct=false
+                        fix_name=true
+                    ;;
+                    [eE])
+                        correct=false
+                        fix_email=true
+                    ;;
+                    [bB])
+                        correct=false
+                        fix_name=true
+                        fix_email=true
+                    ;;
+                    *)
+                        correct=false
+                        fix_name=true
+                        fix_email=true
+                esac
+        done
+        git config --global user.name "$GIT_NAME"
+        git config --global user.email "$GIT_EMAIL"
+    else
+        printf "OK\n"
+    fi
+}
+
+#################################################
+# Main
+#################################################
+
+# ensure not running as root
+if [ `whoami` = root ] ; then
+    printf "\n${RED}ERROR: Do not run this script as root\n\n"
+    exit 1
+fi
+
+# check arguments
+while [ "$1" != "" ]; do
+    case $1 in
+        -v | --version)
+            echo "${SCRIPT_VERSION}"
+            exit
+        ;;
+        -b | --board)
+            shift
+            BOARD=$1
+        ;;
+        -d | --directory)
+            shift
+            BUILD_DIR=$1
+        ;;
+        -i | --image)
+            shift
+            BUILD_IMG=$1
+        ;;
+        -h | --help)
+            usage
+            exit
+        ;;
+        -m | --menu)
+            echo "The menu feature is not yet implemented"
+            exit
+        ;;
+        *)
+            usage
+            exit 1
+    esac
+    shift
+done
+
+# check board name
+case $BOARD in
+    alaric)
+        BOARD_LONG="REFLEX CES Alaric Development Kit"
+    ;;
+    achilles)
+        BOARD_LONG="REFLEX CES Achilles Development Kit"
+    ;;
+    comxpress)
+        BOARD_LONG="REFLEX CES COMXPress Module"
+    ;;
+    *)
+        echo ""
+        echo "Invalid board name specified.  Use --help for valid image names."
+        echo ""
+        exit 1
+esac
+
+# set build parameter variables based on image specified
+# IMG_SIZE = size in bytes / (1024 * 1,000,000)
+# image sizes are rounded up conservatively
+# actual BUILD_DIR folder sizes:
+#  - uboot                      = 10,949,536,237 (10.2 GiB)
+#  - kernel                     = 13,080,589,500 (12.2 GiB)
+#  - arrow-sockit-console-image = 35,017,792,910 (32.6 GiB)
+#  - arrow-sockit-xfce-image    = 75,888,997,849 (70.7 GiB)
+# these actual image sizes will likely not be updated in new
+# releases of the script as this was more of an acedemic exercise
+
+case $BUILD_IMG in
+    xfce)
+        BUILD_IMG=$BOARD-xfce-image
+#        IMG_SIZE=75
+        IMG_SIZE=45
+     ;;
+    console)
+        BUILD_IMG=$BOARD-console-image
+        IMG_SIZE=16
+    ;;
+    uboot)
+        BUILD_IMG=virtual/bootloader
+        IMG_SIZE=11
+        KERNEL_VER=NA
+        GHRD_BRANCH=NA
+        #ANGSTROM_VER=NA
+    ;;
+    kernel)
+        BUILD_IMG=virtual/kernel
+        IMG_SIZE=13
+        UBOOT_VER=NA
+        GHRD_BRANCH=NA
+        #ANGSTROM_VER=NA
+    ;;
+    *)
+        echo ""
+        echo "Invalid image name specified.  Use --help for valid image names."
+        echo ""
+        exit 1
+esac
+
+# if BUILD_DIR exists, skip checking disk space because this could be
+# adding to a previous build (e.g. bootloader or kernel only),
+# assume the check was done then
+#echo -e ${WHITE}
+if [ ! -d "$BUILD_DIR" ]; then
+    check_disk_space
+else
+    printf "\n${BUILD_DIR} directory already exists.\n"
+    printf "Maybe you intended to run this in another directory.\n"
+    read -r -p "Continue from previous build? [y/N] " response
+    case "$response" in
+        [yY][eE][sS]|[yY]) 
+            printf "\n"
+        ;;
+        *)
+            exit 1
+        ;;
+    esac
+fi
+#echo -e ${NC}
+
+# ensure that there is 1GB of free space in the rootfs image for user files
+# and add this variable to the bitbake variables whitelist
+# this is done now in the .wks file
+#export IMAGE_ROOTFS_EXTRA_SPACE="1048576"
+#export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE IMAGE_ROOTFS_EXTRA_SPACE"
+
+# print introduction, ask for confirmation
+echo -e ${GREEN}
+printf "*******************************************************************\n"
+printf " This is the Yocto v${YOCTO_REL} build script for the\n"
+printf " ${BOARD_LONG}\n"
+printf " Current build configuration:\n"
+#printf " Run script with --help to view customizable perameters.\n"
+printf "  - GSRD release:           ${BLUE}${QTS_VER}${GREEN}\n"
+printf "  - GHRD branch:            ${BLUE}${GHRD_BRANCH}${GREEN}\n"
+printf "  - U-Boot version:         ${BLUE}${UBOOT_VER}${GREEN}\n"
+printf "  - Kernel version:         ${BLUE}${KERNEL_VER}${GREEN}\n"
+printf "  - Distro version:         ${BLUE}${ANGSTROM_VER}${GREEN}\n"
+printf "  - Build image:            ${BLUE}${BUILD_IMG}${GREEN}\n"
+printf "      disk space required:  ${BLUE}${IMG_SIZE} GB${GREEN}\n"
+printf "  - top build directory:    ${BLUE}${BUILD_DIR}${GREEN}\n"
+#printf "  - estimated build time:   ${BLUE}> 4 hours typical (processor dependent)${GREEN}\n"
+printf "\n"
+printf " If this is your first time using the Yocto Project OpenEmbedded\n"
+printf " build system on this computer, it may be necessary to exit this\n"   
+printf " script and first install some build tools and essential packages\n"
+printf " as documented in the Yocto Project Reference Manual v${YOCTO_REL}.  You\n"
+printf " should run the ${NC}yocto-packages.sh${GREEN} script with root privileges as\n"
+printf " instructed on the rocketboards.org page to check for and install\n"
+printf " any missing build tools and packages.\n"
+printf "*******************************************************************\n"
+echo -e ${NC}
+
+#echo -e ${WHITE}
+echo "Verify build configuration.  Exit and rerun script with --help to make changes."
+read -r -p "Continue? [y/N] " response
+case "$response" in
+    [yY][eE][sS]|[yY]) 
+        printf "\n"
+    ;;
+    *)
+        exit 1
+    ;;
+esac
+#echo -e ${NC}
+
+# create the BUILD_DIR
+mkdir -p $BUILD_DIR && cd $BUILD_DIR
+
+# confirm installation of repo, look in the expected location
+#echo -e ${WHITE}
+if [ ! -f ~/bin/repo ]; then
+    echo "It appears that the repo script is not installed."
+    echo "If you know you have it and it is in your PATH then"
+    echo "you can skip this.  Otherwise, if you're not sure, I"
+    echo "can install it for you."
+    read -r -p "[y to install / N to skip] " response
+    case "$response" in
+        [yY][eE][sS]|[yY])
+            printf "Installing repo in ~/bin... \n\n"
+            if `mkdir -p ~/bin &&
+               PATH=~/bin:$PATH &&
+               curl http://commondatastorage.googleapis.com/git-repo-downloads/repo > ~/bin/repo &&
+               chmod a+x ~/bin/repo > /dev/null`; then
+               printf "\ndone\n"
+            else
+               printf "${RED}ERROR: repo installation failed${NC}\n"
+               exit 1
+            fi
+        ;;
+        *)
+            printf "Skipping repo install\n"
+    esac
+fi
+#echo -e ${NC}
+
+check_git_config
+
+# start a build time counter
+SECONDS=0
+
+# start the build process and echo what we are doing
+echo -e ${GREEN}
+echo "*******************************************************************"
+echo " Cloning Angstrom repo...                                          "
+echo "*******************************************************************"
+echo -e ${NC}
+
+sleep 2
+# Clone Angstrom repo
+if repo init -u git://github.com/Angstrom-distribution/angstrom-manifest -b angstrom-$ANGSTROM_VER-$YOCTO_CODENAME ; then
+    :
+else
+    echo -e ${RED}
+    echo "ERROR: Cloning Angstrom repo failed."
+    echo -e ${ORANGE}
+    echo "Are you sure you have repo installed?"
+    echo "Maybe you need to run yocto-pacakges.sh first."
+    echo -e ${NC}
+    exit 1
+fi
+
+echo -e ${GREEN}
+echo "*******************************************************************"
+echo " Configuring local manifests...                                    "
+echo "*******************************************************************"
+echo -e ${NC}
+
+sleep 2
+
+# this is where our custom layers are specified for the repo tool
+if wget https://raw.githubusercontent.com/reflexces/build-scripts/warrior/${BOARD}_manifest.xml ; then
+    echo "Done"
+else
+    echo -e ${RED}
+    echo "ERROR: failed to fetch manifest file"
+    echo -e ${NC}
+    exit 1
+fi
+
+mkdir -p .repo/local_manifests
+mv ${BOARD}_manifest.xml .repo/local_manifests
+
+echo -e ${GREEN}
+echo "*******************************************************************"
+echo " Syncing...                                                        "
+echo "*******************************************************************"
+echo -e ${NC}
+
+sleep 2
+repo sync
+
+echo -e ${GREEN}
+echo "*******************************************************************"
+echo " Setting up environment...                                         "
+echo "*******************************************************************"
+echo -e ${NC}
+
+sleep 2
+MACHINE=$BOARD . ./setup-environment
+echo "MACHINE set to ${BOARD}"
+sleep 2
+
+echo -e ${GREEN}
+echo "*******************************************************************"
+echo " Updating bblayers.conf...                                         "
+echo "*******************************************************************"
+echo -e ${NC}
+
+# TODO: check if these items already exist in bblayers.conf before adding;
+# duplicates cause bitbake error
+
+# add custom layer to bblayers.conf
+sed --follow-symlinks -i "/meta-altera/a \  \${OEROOT}/layers/meta-${BOARD} \\\\" conf/bblayers.conf
+echo "Added meta-${BOARD} layer to bblayers.conf"
+#sed --follow-symlinks -i "/meta-altera/a \  \${OEROOT}/layers/meta-altera-refdes \\\\" conf/bblayers.conf
+#echo "Added meta-altera-refdes layer to bblayers.conf"
+
+# disable meta-photography layer - causing gnome-keyring bitbake error
+sed --follow-symlinks -i '/meta-photography/d' conf/bblayers.conf
+echo "Removed meta-photography layer from bblayers.conf"
+
+#disable meta-atmel per altera.xml manifest
+sed --follow-symlinks -i '/meta-atmel/d' conf/bblayers.conf
+echo "Removed meta-atmel layer from bblayers.conf"
+
+#disable meta-freescale per altera.xml manifest
+sed --follow-symlinks -i '/meta-freescale/d' conf/bblayers.conf
+echo "Removed meta-freescale layer from bblayers.conf"
+
+
+#next line for script debug only, comment out for production build
+#read -p "Press [Enter] to resume..."
+sleep 2
+
+echo -e ${GREEN}
+echo "*******************************************************************"
+printf " Starting bitbake ${NC}${BUILD_IMG}${GREEN}...\n"
+echo "*******************************************************************"
+echo -e ${NC}
+
+sleep 2
+if bitbake $BUILD_IMG ; then
+    # display elapsed build time for successful build
+    ELAPSED="$(($SECONDS / 3600)) hrs $((($SECONDS / 60) % 60)) min $(($SECONDS % 60)) sec"
+    echo -e ${GREEN}
+    printf "*******************************************************************\n"
+    printf " Build of ${NC}${BUILD_IMG}${GREEN}\n"
+    printf " completed successfully in ${NC}${ELAPSED}${GREEN}\n"
+    printf " Output files directory:\n"
+    printf "\n"
+    printf " ${BLUE}${PWD}/deploy/glibc/images/${BOARD}/${GREEN}\n"
+    printf "\n"
+    printf " If you built a full image (XFCE or console), you can now copy\n"
+    printf " the eMMC image file to the board's eMMC device.  Refer to the\n"
+    printf " rocketboards.org board article for programming instructions.\n"
+    printf "*******************************************************************\n"
+    printf "\n"
+    echo -e ${NC}
+else
+    echo -e ${ORANGE}
+    echo "*******************************************************************"
+    echo " It looks like something went wrong with bitbake.  Either you      "
+    echo " manually interrupted the build process or bitbake encountered an  "
+    echo " an error.  Or it is possible that a required build tool is still  "
+    echo " missing that I was not able to detect for your Linux distribution."
+    echo " Please refer to the Yocto Project Reference Manual, \"Required    "
+    echo " Packages for Host Development System\" section.                   "
+    echo "*******************************************************************"
+    echo -e ${NC}
+fi
