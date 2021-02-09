@@ -30,7 +30,10 @@
 #   - initial release for REFLEX CES COMXpressSX Stratix 10 module
 #
 # 2020.05
-#   - updated for release for REFLEX CES Achilles SOM, Angstrom v2019.06-warrior 
+#   - updated for release for REFLEX CES Achilles SOM, Angstrom v2019.06-warrior
+#
+# 2021.02
+#   - updated for Yocto 3.1.4 dunfell
 #
 # TODO: add dependecy checking to this sript (currently in yocto-packages.sh because the installation
 #       of packages, if necessary, requires root privileges); this script cannot run as root

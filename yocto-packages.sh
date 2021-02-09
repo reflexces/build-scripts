@@ -43,6 +43,10 @@
 #
 # 05/04/2020 - updated all Essentials package list for Yocto Project 2.7
 #            - tested with Ubuntu 18.04 (supported as stated in Yocto 2.7 documentation)
+#
+# 02/09/2021 - updated all Essentials package list for Yocto Project 3.1.5
+#            - tested with Ubuntu 20.04 (supported as stated in Yocto 3.1.5 documentation)
+
 
 #################################################
 # Functions
