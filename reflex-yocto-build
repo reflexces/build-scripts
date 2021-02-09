@@ -44,9 +44,9 @@
 #################################################
 
 # Script version variables
-YOCTO_REL=2.7
-YOCTO_CODENAME=warrior
-ANGSTROM_VER="v2019.06"
+YOCTO_REL=3.1.4
+YOCTO_CODENAME=dunfell
+ANGSTROM_VER="v2020.06"
 SCRIPT_VERSION="Yocto ${YOCTO_REL} Build Script"
 
 # Other configuration variables
@@ -54,8 +54,8 @@ SCRIPT_VERSION="Yocto ${YOCTO_REL} Build Script"
 BOARD=achilles
 BOARD_LONG="not specified"
 BUILD_DIR=angstrom-$ANGSTROM_VER-yocto$YOCTO_REL
-UBOOT_VER=2019.10
-KERNEL_VER=4.14.130-ltsi
+UBOOT_VER=2020.07
+KERNEL_VER=5.4.74-lts
 QTS_VER=N/A
 GHRD_BRANCH=N/A
 BUILD_IMG=console

@@ -236,7 +236,10 @@ case "$DISTRO" in
         check_package 'python3-jinja2'
         check_package 'libegl1-mesa'
         check_package 'libsdl1.2-dev'
+        check_package 'pylint3'
         check_package 'xterm'
+        check_package 'python3-subunit'
+        check_package 'mesa-common-dev'
         # Other
         check_package 'curl'
     ;;
@@ -279,6 +282,8 @@ case "$DISTRO" in
         check_package 'python3-jinja2'
         check_package 'SDL-devel'
         check_package 'xterm'
+        check_package 'rpcgen'
+        check_package 'mesa-libGL-devel'
         # Other
         check_package 'curl'
     ;;
@@ -309,6 +314,8 @@ case "$DISTRO" in
         check_package 'GitPython'
         check_package 'libSDL-devel'
         check_package 'xterm'
+        check_package 'rpcgen'
+        check_package 'Mesa-dri-devel'
         # Other
         check_package 'curl'
     ;;
@@ -322,7 +329,7 @@ case "$DISTRO" in
         check_package 'tar' 
         check_package 'bzip2'
         check_package 'gzip'
-        check_package 'python'
+        check_package 'python3'
         check_package 'unzip'
         check_package 'perl'
         check_package 'patch'
@@ -339,11 +346,12 @@ case "$DISTRO" in
         check_package 'perl-Data-Dumper'
         check_package 'perl-Text-ParseWords'
         check_package 'perl-Thread-Queue'
-        check_package 'python34-pip'
+        check_package 'python36-pip'
         check_package 'xz'
         check_package 'which'
         check_package 'SDL-devel'
         check_package 'xterm'
+        check_package 'mesa-libGL-devel'
         # Other
         check_package 'curl'
     ;;
