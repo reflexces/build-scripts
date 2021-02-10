@@ -32,6 +32,9 @@
 # 2020.05
 #   - updated for release for REFLEX CES Achilles SOM, Angstrom v2019.06-warrior 
 #
+# 2021.02
+#   - updated for release for REFLEX CES Achilles SOM, Angstrom v2019.12-zeus 
+#
 # TODO: add dependecy checking to this sript (currently in yocto-packages.sh because the installation
 #       of packages, if necessary, requires root privileges); this script cannot run as root
 # TODO: add parameters to allow for more build customization (u-boot & kernel version, etc)
@@ -44,9 +47,9 @@
 #################################################
 
 # Script version variables
-YOCTO_REL=2.7
-YOCTO_CODENAME=warrior
-ANGSTROM_VER="v2019.06"
+YOCTO_REL=3.0.4
+YOCTO_CODENAME=zeus
+ANGSTROM_VER="v2019.12"
 SCRIPT_VERSION="Yocto ${YOCTO_REL} Build Script"
 
 # Other configuration variables
@@ -54,8 +57,8 @@ SCRIPT_VERSION="Yocto ${YOCTO_REL} Build Script"
 BOARD=achilles
 BOARD_LONG="not specified"
 BUILD_DIR=angstrom-$ANGSTROM_VER-yocto$YOCTO_REL
-UBOOT_VER=2019.10
-KERNEL_VER=4.14.130-ltsi
+UBOOT_VER=2020.07
+KERNEL_VER=5.4.74-lts
 QTS_VER=N/A
 GHRD_BRANCH=N/A
 BUILD_IMG=console
@@ -426,7 +429,7 @@ echo -e ${NC}
 sleep 2
 
 # this is where our custom layers are specified for the repo tool
-if wget https://raw.githubusercontent.com/reflexces/build-scripts/warrior/${BOARD}_manifest.xml ; then
+if wget https://raw.githubusercontent.com/reflexces/build-scripts/zeus/${BOARD}_manifest.xml ; then
     echo "Done"
 else
     echo -e ${RED}

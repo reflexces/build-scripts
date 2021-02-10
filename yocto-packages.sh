@@ -43,6 +43,9 @@
 #
 # 05/04/2020 - updated all Essentials package list for Yocto Project 2.7
 #            - tested with Ubuntu 18.04 (supported as stated in Yocto 2.7 documentation)
+#
+# 02/09/2021 - updated all Essentials package list for Yocto Project 3.0.4
+#            - tested with Ubuntu 20.04 (not supported as stated in Yocto 3.0.4 documentation)
 
 #################################################
 # Functions
@@ -236,6 +239,7 @@ case "$DISTRO" in
         check_package 'python3-jinja2'
         check_package 'libegl1-mesa'
         check_package 'libsdl1.2-dev'
+        check_package 'pylint3'
         check_package 'xterm'
         # Other
         check_package 'curl'
