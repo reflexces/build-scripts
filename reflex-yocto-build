@@ -488,6 +488,13 @@ echo "Removed meta-atmel layer from bblayers.conf"
 sed --follow-symlinks -i '/meta-freescale/d' conf/bblayers.conf
 echo "Removed meta-freescale layer from bblayers.conf"
 
+#disable meta-maker; only compatible with warrior
+sed --follow-symlinks -i '/meta-maker/d' conf/bblayers.conf
+echo "Removed meta-maker layer from bblayers.conf"
+
+#disable meta-edison; build error, not required for achilles
+sed --follow-symlinks -i '/meta-edison/d' conf/bblayers.conf
+echo "Removed meta-edison layer from bblayers.conf"
 
 #next line for script debug only, comment out for production build
 #read -p "Press [Enter] to resume..."
