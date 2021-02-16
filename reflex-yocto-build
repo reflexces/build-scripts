@@ -429,7 +429,7 @@ echo -e ${NC}
 sleep 2
 
 # this is where our custom layers are specified for the repo tool
-if wget https://raw.githubusercontent.com/reflexces/build-scripts/warrior/${BOARD}_manifest.xml ; then
+if wget https://raw.githubusercontent.com/reflexces/build-scripts/dunfell/${BOARD}_manifest.xml ; then
     echo "Done"
 else
     echo -e ${RED}

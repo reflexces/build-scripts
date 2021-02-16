@@ -3,7 +3,9 @@
 	<remote fetch="https://github.com" name="github_altera"/>
 	<remove-project name="kraj/meta-altera" />
 	<remove-project name="linux4sam/meta-atmel" />
-
+	<remove-project name="koenkooi/meta-edison" />
+	<remove-project name="koenkooi/meta-maker" />
+    
 	<project remote="github_altera"  name="kraj/meta-altera" path="layers/meta-altera" revision="master"/>
 	<project remote="github_altera"  name="reflexces/meta-achilles" path="layers/meta-achilles" revision="dunfell" upstream="master"/>
 </manifest>
