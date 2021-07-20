@@ -35,6 +35,10 @@
 # 2021.02
 #   - updated for Yocto 3.1.4 dunfell
 #
+# 2021.05
+#   - script overhaul to support Yocto Poky build due to Angstrom distribution EOL
+#   - this release supports the Yocto gatesgarth branch
+#
 # TODO: add dependecy checking to this sript (currently in yocto-packages.sh because the installation
 #       of packages, if necessary, requires root privileges); this script cannot run as root
 # TODO: add parameters to allow for more build customization (u-boot & kernel version, etc)
@@ -47,22 +51,24 @@
 #################################################
 
 # Script version variables
-YOCTO_REL=3.1.4
-YOCTO_CODENAME=dunfell
-ANGSTROM_VER="v2020.06"
-SCRIPT_VERSION="Yocto ${YOCTO_REL} Build Script"
+YOCTO_REL=3.3
+YOCTO_BRANCH=gatesgarth
+SCRIPT_VERSION="Yocto ${YOCTO_BRANCH} Build Script"
 
 # Other configuration variables
 # set a default board for the build, can be changed with -b option
 BOARD=achilles
+MACHINE=$BOARD
 BOARD_LONG="not specified"
-BUILD_DIR=angstrom-$ANGSTROM_VER-yocto$YOCTO_REL
+BUILD_DIR=yocto-poky-$YOCTO_BRANCH
 UBOOT_VER=2020.07
 KERNEL_VER=5.4.74-lts
-QTS_VER=N/A
-GHRD_BRANCH=N/A
 BUILD_IMG=console
 IMG_SIZE=16
+
+# These variables can be used to support integrated scripted Quartus builds of the GHRD for future release
+#QTS_VER=N/A
+#GHRD_BRANCH=N/A
 
 # Color text formatting
 RED='\033[0;31m'
@@ -89,10 +95,10 @@ usage()
     echo ""
     echo "  -d, --directory [dir name]     Build directory name"
     echo "                                 If not specified, defaults to"
-    echo "                                 angstrom-${ANGSTROM_VER}-yocto${YOCTO_REL}"
+    echo "                                 ${BUILD_DIR}"
     echo ""
     echo "  -i, --image [image name]       Only these images names are valid:"
-    echo "                                   xfce (XFCE graphical desktop, default if image not specified)"
+#   echo "                                   xfce (XFCE graphical desktop, default if image not specified)"
     echo "                                   console (console applications only)"
     echo "                                   uboot (builds U-Boot bootloader only)"
     echo "                                   kernel (builds linux kernel only)"
@@ -193,6 +199,165 @@ check_git_config()
     fi
 }
 
+# ------------------------------------------------------------------
+# function name: fetch_or_update_layers
+# function usage: fetch_or_update_layers "layer name" "source URL"
+# function description: download layers required for build;
+#    if layer exists, get latest updates
+#
+# TODO: fix updating of meta-achilles; not pulling updates from
+# branches other than master; use git pull origin $YOCTO_BRANCH
+# instead if it exists?
+# ------------------------------------------------------------------
+
+fetch_or_update_layers() {
+    meta_layer=$1
+    source_url=$2
+    pushd $BUILD_DIR > /dev/null
+    pushd layers > /dev/null
+
+    if [ -d "$meta_layer" ]; then
+        echo -e ${GREEN}
+        echo "*******************************************************************"
+        echo " Fetching latest updates for $meta_layer...                        "
+        echo "*******************************************************************"
+        echo -e ${NC}
+        
+        pushd $meta_layer > /dev/null
+        git checkout master
+        git pull origin master
+        git checkout $YOCTO_BRANCH || git checkout master
+        popd > /dev/null        
+    else
+        echo -e ${GREEN}
+        echo "*******************************************************************"
+        echo " Downloading source for $meta_layer...                             "
+        echo "*******************************************************************"
+        echo -e ${NC}
+        
+        git clone $source_url
+        pushd $meta_layer
+        git checkout $YOCTO_BRANCH || git checkout master
+        popd > /dev/null
+    fi
+    
+    popd > /dev/null
+    popd > /dev/null
+}
+
+add_bblayers() {
+    layer_name=$1
+    case `grep "$layer_name" "conf/bblayers.conf" > /dev/null; echo $?` in
+        0)
+            echo "Layer $layer_name already added to bblayers.conf"
+        ;;
+        1)
+            echo 'BBLAYERS += " ${TOPDIR}/../layers/'$layer_name' "' >> conf/bblayers.conf
+            echo "Added layer $layer_name"
+        ;;
+        *)
+            printf "${RED}ERROR: unable to update bblayers.conf${NC}\n\n"
+            exit 1
+        ;;
+    esac
+}
+
+build_all() {
+    pushd $BUILD_DIR > /dev/null
+
+    echo -e ${GREEN}
+    echo "*******************************************************************"
+    echo " Initializing poky build environment...                            "
+    echo "*******************************************************************"
+    echo -e ${NC}
+
+    source layers/poky/oe-init-build-env ./$BOARD-build-files/
+
+		# Settings for local.conf
+#		echo -e "\n[INFO] Update local.conf"
+#		sed -i /MACHINE/d conf/local.conf
+#		sed -i /UBOOT_CONFIG/d conf/local.conf
+
+    echo "MACHINE = \"${MACHINE}\"" >> conf/local.conf
+#    echo 'DISTRO_FEATURES_append = " usbgadget"' >> conf/local.conf
+    echo 'DISTRO_FEATURES_append = " systemd"' >> conf/local.conf
+    echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >> conf/local.conf
+
+#		echo "DL_DIR = \"$location/downloads\"" >> conf/local.conf
+#		echo 'DISTRO_FEATURES_append = " systemd"' >> conf/local.conf
+#		echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >> conf/local.conf
+
+        # Build both Image and zImage for Arria10
+#       echo "KERNEL_ALT_IMAGETYPE = \"Image\"" >> conf/local.conf
+
+    echo -e ${GREEN}
+    echo "*******************************************************************"
+    echo " Updating bblayers.conf...                                         "
+    echo "*******************************************************************"
+    echo -e ${NC}
+
+# additional layers required for your build should be added here and below
+# in when calling the fetch_or_update_layers function
+    add_bblayers meta-intel-fpga
+    add_bblayers meta-achilles
+    add_bblayers meta-openembedded/meta-oe
+    add_bblayers meta-openembedded/meta-networking
+    add_bblayers meta-openembedded/meta-python
+    
+#		echo -e "\n[INFO] Clean up previous kernel build if any"
+#		bitbake virtual/kernel -c cleanall
+#		echo -e "\n[INFO] Clean up previous u-boot build if any"
+#		bitbake u-boot-socfpga -c cleanall
+
+    echo -e ${GREEN}
+    echo "*******************************************************************"
+    printf " Starting bitbake ${NC}${BUILD_IMG}${GREEN}...\n"
+    echo "*******************************************************************"
+    echo -e ${NC}
+
+    if bitbake $BUILD_IMG ; then
+        # copy the WIC image to an image directory
+        cp -L tmp/deploy/images/$BOARD/$BUILD_IMG-$BOARD.wic ../$BOARD-emmc-image
+        
+        # display elapsed build time for successful build
+        ELAPSED="$(($SECONDS / 3600)) hrs $((($SECONDS / 60) % 60)) min $(($SECONDS % 60)) sec"
+        echo -e ${GREEN}
+        printf "*******************************************************************\n"
+        printf " Build of ${NC}${BUILD_IMG}${GREEN}\n"
+        printf " completed successfully in ${NC}${ELAPSED}${GREEN}\n"
+        printf " on ${NC}$(date -d "today" +"%m-%d-%Y %H:%M")${GREEN}\n"
+        printf "\n"
+        printf " The eMMC WIC image has been copied to the following directory:\n"
+        printf " ${BLUE}${PWD}/${BOARD}-emmc-image${GREEN}\n"
+        printf "\n"
+        printf " All build output files can be found in the following directory:\n"
+        printf " ${BLUE}${PWD}/${BOARD}-build-files/tmp/deploy/images/${BOARD}${GREEN}\n"
+        printf "\n"
+        printf " If you built a full image (console or XFCE), you can now copy\n"
+        printf " the eMMC image file to the board's eMMC device.  Refer to the\n"
+        printf " rocketboards.org board article for programming instructions.\n"
+        printf "*******************************************************************\n"
+        printf "\n"
+        echo -e ${NC}
+
+    else
+        echo -e ${ORANGE}
+        echo "*******************************************************************"
+        echo " It looks like something went wrong with bitbake.  Either you      "
+        echo " manually interrupted the build process or bitbake encountered an  "
+        echo " an error.  Copy & paste any error messages into your web browser  "
+        echo " search engine to attempt to debug the issue.                      "
+        echo " It is also possible that a required build tool is still missing   "
+        echo " that was not detected for your Linux distribution by the          "
+        echo " yocto-packages.sh dependency check script.  Please refer to the   "
+        echo " Yocto Project Reference Manual, \"Required Packages for Host      "
+        echo " Development System\" section.                                     "
+        echo "*******************************************************************"
+        echo -e ${NC}
+    fi
+    popd > /dev/null
+}
+
 #################################################
 # Main
 #################################################
@@ -237,7 +402,7 @@ while [ "$1" != "" ]; do
     shift
 done
 
-# check board name
+# get board name, used for message printing
 case $BOARD in
     alaric)
         BOARD_LONG="REFLEX CES Alaric Development Kit"
@@ -303,6 +468,7 @@ esac
 #echo -e ${WHITE}
 if [ ! -d "$BUILD_DIR" ]; then
     check_disk_space
+    check_git_config
 else
     printf "\n${BUILD_DIR} directory already exists.\n"
     printf "Maybe you intended to run this in another directory.\n"
@@ -364,168 +530,19 @@ case "$response" in
 esac
 #echo -e ${NC}
 
-# create the BUILD_DIR
-mkdir -p $BUILD_DIR && cd $BUILD_DIR
-
-# confirm installation of repo, look in the expected location
-#echo -e ${WHITE}
-if [ ! -f ~/bin/repo ]; then
-    echo "It appears that the repo script is not installed."
-    echo "If you know you have it and it is in your PATH then"
-    echo "you can skip this.  Otherwise, if you're not sure, I"
-    echo "can install it for you."
-    read -r -p "[y to install / N to skip] " response
-    case "$response" in
-        [yY][eE][sS]|[yY])
-            printf "Installing repo in ~/bin... \n\n"
-            if `mkdir -p ~/bin &&
-               PATH=~/bin:$PATH &&
-               curl http://commondatastorage.googleapis.com/git-repo-downloads/repo > ~/bin/repo &&
-               chmod a+x ~/bin/repo > /dev/null`; then
-               printf "\ndone\n"
-            else
-               printf "${RED}ERROR: repo installation failed${NC}\n"
-               exit 1
-            fi
-        ;;
-        *)
-            printf "Skipping repo install\n"
-    esac
-fi
-#echo -e ${NC}
-
-check_git_config
+# create the BUILD_DIR and MACHINE build directories
+mkdir -p $BUILD_DIR
+mkdir -p $BUILD_DIR/$BOARD-emmc-image
+mkdir -p $BUILD_DIR/layers
+mkdir -p $BUILD_DIR/$BOARD-build-files
 
 # start a build time counter
 SECONDS=0
 
-# start the build process and echo what we are doing
-echo -e ${GREEN}
-echo "*******************************************************************"
-echo " Cloning Angstrom repo...                                          "
-echo "*******************************************************************"
-echo -e ${NC}
+# additional layers required for your build should be added here
+fetch_or_update_layers poky https://git.yoctoproject.org/git/poky.git
+fetch_or_update_layers meta-intel-fpga https://git.yoctoproject.org/git/meta-intel-fpga
+fetch_or_update_layers meta-openembedded https://git.openembedded.org/meta-openembedded
+fetch_or_update_layers meta-achilles https://github.com/reflexces/meta-achilles.git
 
-sleep 2
-# Clone Angstrom repo
-if repo init -u git://github.com/Angstrom-distribution/angstrom-manifest -b angstrom-$ANGSTROM_VER-$YOCTO_CODENAME ; then
-    :
-else
-    echo -e ${RED}
-    echo "ERROR: Cloning Angstrom repo failed."
-    echo -e ${ORANGE}
-    echo "Are you sure you have repo installed?"
-    echo "Maybe you need to run yocto-pacakges.sh first."
-    echo -e ${NC}
-    exit 1
-fi
-
-echo -e ${GREEN}
-echo "*******************************************************************"
-echo " Configuring local manifests...                                    "
-echo "*******************************************************************"
-echo -e ${NC}
-
-sleep 2
-
-# this is where our custom layers are specified for the repo tool
-if wget https://raw.githubusercontent.com/reflexces/build-scripts/dunfell/${BOARD}_manifest.xml ; then
-    echo "Done"
-else
-    echo -e ${RED}
-    echo "ERROR: failed to fetch manifest file"
-    echo -e ${NC}
-    exit 1
-fi
-
-mkdir -p .repo/local_manifests
-mv ${BOARD}_manifest.xml .repo/local_manifests
-
-echo -e ${GREEN}
-echo "*******************************************************************"
-echo " Syncing...                                                        "
-echo "*******************************************************************"
-echo -e ${NC}
-
-sleep 2
-repo sync
-
-echo -e ${GREEN}
-echo "*******************************************************************"
-echo " Setting up environment...                                         "
-echo "*******************************************************************"
-echo -e ${NC}
-
-sleep 2
-MACHINE=$BOARD . ./setup-environment
-echo "MACHINE set to ${BOARD}"
-sleep 2
-
-echo -e ${GREEN}
-echo "*******************************************************************"
-echo " Updating bblayers.conf...                                         "
-echo "*******************************************************************"
-echo -e ${NC}
-
-# TODO: check if these items already exist in bblayers.conf before adding;
-# duplicates cause bitbake error
-
-# add custom layer to bblayers.conf
-sed --follow-symlinks -i "/meta-altera/a \  \${OEROOT}/layers/meta-${BOARD} \\\\" conf/bblayers.conf
-echo "Added meta-${BOARD} layer to bblayers.conf"
-#sed --follow-symlinks -i "/meta-altera/a \  \${OEROOT}/layers/meta-altera-refdes \\\\" conf/bblayers.conf
-#echo "Added meta-altera-refdes layer to bblayers.conf"
-
-# disable meta-photography layer - causing gnome-keyring bitbake error
-sed --follow-symlinks -i '/meta-photography/d' conf/bblayers.conf
-echo "Removed meta-photography layer from bblayers.conf"
-
-#disable meta-atmel per altera.xml manifest
-sed --follow-symlinks -i '/meta-atmel/d' conf/bblayers.conf
-echo "Removed meta-atmel layer from bblayers.conf"
-
-#disable meta-freescale per altera.xml manifest
-sed --follow-symlinks -i '/meta-freescale/d' conf/bblayers.conf
-echo "Removed meta-freescale layer from bblayers.conf"
-
-
-#next line for script debug only, comment out for production build
-#read -p "Press [Enter] to resume..."
-sleep 2
-
-echo -e ${GREEN}
-echo "*******************************************************************"
-printf " Starting bitbake ${NC}${BUILD_IMG}${GREEN}...\n"
-echo "*******************************************************************"
-echo -e ${NC}
-
-sleep 2
-if bitbake $BUILD_IMG ; then
-    # display elapsed build time for successful build
-    ELAPSED="$(($SECONDS / 3600)) hrs $((($SECONDS / 60) % 60)) min $(($SECONDS % 60)) sec"
-    echo -e ${GREEN}
-    printf "*******************************************************************\n"
-    printf " Build of ${NC}${BUILD_IMG}${GREEN}\n"
-    printf " completed successfully in ${NC}${ELAPSED}${GREEN}\n"
-    printf " Output files directory:\n"
-    printf "\n"
-    printf " ${BLUE}${PWD}/deploy/glibc/images/${BOARD}/${GREEN}\n"
-    printf "\n"
-    printf " If you built a full image (XFCE or console), you can now copy\n"
-    printf " the eMMC image file to the board's eMMC device.  Refer to the\n"
-    printf " rocketboards.org board article for programming instructions.\n"
-    printf "*******************************************************************\n"
-    printf "\n"
-    echo -e ${NC}
-else
-    echo -e ${ORANGE}
-    echo "*******************************************************************"
-    echo " It looks like something went wrong with bitbake.  Either you      "
-    echo " manually interrupted the build process or bitbake encountered an  "
-    echo " an error.  Or it is possible that a required build tool is still  "
-    echo " missing that I was not able to detect for your Linux distribution."
-    echo " Please refer to the Yocto Project Reference Manual, \"Required    "
-    echo " Packages for Host Development System\" section.                   "
-    echo "*******************************************************************"
-    echo -e ${NC}
-fi
+build_all
