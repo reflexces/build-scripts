@@ -46,7 +46,8 @@
 #
 # 02/09/2021 - updated all Essentials package list for Yocto Project 3.1.5
 #            - tested with Ubuntu 20.04 (supported as stated in Yocto 3.1.5 documentation)
-
+# 07/20/2021 - updated all Essentials package list for Yocto Project 3.2.4 (gatesgarth)
+#            - tested with Ubuntu 20.04 (supported as stated in Yocto 3.2.4 documentation)
 
 #################################################
 # Functions
@@ -229,7 +230,6 @@ case "$DISTRO" in
         check_package 'chrpath'
         check_package 'socat'
         check_package 'cpio'
-        check_package 'python'
         check_package 'python3'
         check_package 'python3-pip'
         check_package 'python3-pexpect'
@@ -244,8 +244,6 @@ case "$DISTRO" in
         check_package 'xterm'
         check_package 'python3-subunit'
         check_package 'mesa-common-dev'
-        # Other
-        check_package 'curl'
     ;;
     "Fedora")
         # Essentials
@@ -288,8 +286,6 @@ case "$DISTRO" in
         check_package 'xterm'
         check_package 'rpcgen'
         check_package 'mesa-libGL-devel'
-        # Other
-        check_package 'curl'
     ;;
     "OpenSUSE" | "openSUSE" | "openSUSE project")
         # Essentials
@@ -315,18 +311,14 @@ case "$DISTRO" in
         check_package 'which'
         check_package 'python3-Jinja2'
         check_package 'Mesa-libEGL1'
-        check_package 'GitPython'
         check_package 'libSDL-devel'
         check_package 'xterm'
         check_package 'rpcgen'
         check_package 'Mesa-dri-devel'
-        # Other
-        check_package 'curl'
     ;;
     "CentOS")
         # Essentials
         check_package 'epel-release'
-        check_package 'makecache'
         check_package 'gawk' 
         check_package 'make'
         check_package 'wget'
@@ -346,18 +338,22 @@ case "$DISTRO" in
         check_package 'glibc-devel'
         check_package 'texinfo'
         check_package 'chrpath'
+        check_package 'ccache'
         check_package 'socat'
         check_package 'perl-Data-Dumper'
         check_package 'perl-Text-ParseWords'
         check_package 'perl-Thread-Queue'
         check_package 'python36-pip'
+        check_package 'python3-pip'
+        check_package 'python3-GitPython'
+        check_package 'python3-jinja2'
+        check_package 'python3-pexpect'
         check_package 'xz'
         check_package 'which'
         check_package 'SDL-devel'
         check_package 'xterm'
+        check_package 'rpcgen'
         check_package 'mesa-libGL-devel'
-        # Other
-        check_package 'curl'
     ;;
     *)
         echo ""
