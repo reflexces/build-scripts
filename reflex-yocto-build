@@ -439,7 +439,7 @@ case $BUILD_IMG in
      ;;
     console)
         BUILD_IMG=$BOARD-console-image
-        IMG_SIZE=16
+        IMG_SIZE=54
     ;;
     uboot)
         BUILD_IMG=virtual/bootloader
