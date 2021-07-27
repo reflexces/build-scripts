@@ -51,7 +51,7 @@
 #################################################
 
 # Script version variables
-YOCTO_REL=3.3
+YOCTO_REL=3.2.4
 YOCTO_BRANCH=gatesgarth
 SCRIPT_VERSION="Yocto ${YOCTO_BRANCH} Build Script"
 
@@ -61,10 +61,10 @@ BOARD=achilles
 MACHINE=$BOARD
 BOARD_LONG="not specified"
 BUILD_DIR=yocto-poky-$YOCTO_BRANCH
-UBOOT_VER=2020.07
-KERNEL_VER=5.4.74-lts
+UBOOT_VER=2021.01
+KERNEL_VER=5.4.114-lts
 BUILD_IMG=console
-IMG_SIZE=16
+IMG_SIZE=54
 
 # These variables can be used to support integrated scripted Quartus builds of the GHRD for future release
 #QTS_VER=N/A
@@ -225,7 +225,7 @@ fetch_or_update_layers() {
         
         pushd $meta_layer > /dev/null
         git checkout master
-        git pull origin master
+        git pull
         git checkout $YOCTO_BRANCH || git checkout master
         popd > /dev/null        
     else
@@ -503,7 +503,7 @@ printf "  - U-Boot version:         ${BLUE}${UBOOT_VER}${GREEN}\n"
 printf "  - Kernel version:         ${BLUE}${KERNEL_VER}${GREEN}\n"
 printf "  - Distro version:         ${BLUE}${ANGSTROM_VER}${GREEN}\n"
 printf "  - Build image:            ${BLUE}${BUILD_IMG}${GREEN}\n"
-printf "      disk space required:  ${BLUE}${IMG_SIZE} GB${GREEN}\n"
+printf "      disk space required:  ${BLUE}${IMG_SIZE} GiB${GREEN}\n"
 printf "  - top build directory:    ${BLUE}${BUILD_DIR}${GREEN}\n"
 #printf "  - estimated build time:   ${BLUE}> 4 hours typical (processor dependent)${GREEN}\n"
 printf "\n"
@@ -544,5 +544,7 @@ fetch_or_update_layers poky https://git.yoctoproject.org/git/poky.git
 fetch_or_update_layers meta-intel-fpga https://git.yoctoproject.org/git/meta-intel-fpga
 fetch_or_update_layers meta-openembedded https://git.openembedded.org/meta-openembedded
 fetch_or_update_layers meta-achilles https://github.com/reflexces/meta-achilles.git
+# use next line for testing only; comment out line above
+#fetch_or_update_layers meta-achilles /home/dan/work/github/meta-achilles.git
 
 build_all
