@@ -244,6 +244,10 @@ case "$DISTRO" in
         check_package 'xterm'
         check_package 'python3-subunit'
         check_package 'mesa-common-dev'
+# required for command line u-boot and kernel builds
+        check_package 'bison'
+        check_package 'flex'
+        check_package 'device-tree-compiler'
     ;;
     "Fedora")
         # Essentials
