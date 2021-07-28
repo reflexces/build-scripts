@@ -61,8 +61,10 @@ BOARD=achilles
 MACHINE=$BOARD
 BOARD_LONG="not specified"
 BUILD_DIR=yocto-poky-$YOCTO_BRANCH
-UBOOT_VER=2021.01
-KERNEL_VER=5.4.114-lts
+GSRD_REL=2021.07
+GHRD_BRANCH=ghrd-v21.1-pr
+UBOOT_VER=v2021.01
+KERNEL_VER=v5.4
 BUILD_IMG=console
 IMG_SIZE=54
 
@@ -224,9 +226,14 @@ fetch_or_update_layers() {
         echo -e ${NC}
         
         pushd $meta_layer > /dev/null
-        git checkout master
+
+        if [ $meta_layer = meta-intel-fpga ]; then
+            git checkout master
+        else
+            git checkout $YOCTO_BRANCH
+        fi
+
         git pull
-        git checkout $YOCTO_BRANCH || git checkout master
         popd > /dev/null        
     else
         echo -e ${GREEN}
@@ -237,7 +244,13 @@ fetch_or_update_layers() {
         
         git clone $source_url
         pushd $meta_layer
-        git checkout $YOCTO_BRANCH || git checkout master
+
+        if [ $meta_layer = meta-intel-fpga ]; then
+            git checkout master
+        else
+            git checkout $YOCTO_BRANCH
+        fi
+
         popd > /dev/null
     fi
     
@@ -493,27 +506,26 @@ fi
 # print introduction, ask for confirmation
 echo -e ${GREEN}
 printf "*******************************************************************\n"
-printf " This is the Yocto v${YOCTO_REL} build script for the\n"
-printf " ${BOARD_LONG}\n"
-printf " Current build configuration:\n"
-#printf " Run script with --help to view customizable perameters.\n"
-printf "  - GSRD release:           ${BLUE}${QTS_VER}${GREEN}\n"
-printf "  - GHRD branch:            ${BLUE}${GHRD_BRANCH}${GREEN}\n"
-printf "  - U-Boot version:         ${BLUE}${UBOOT_VER}${GREEN}\n"
-printf "  - Kernel version:         ${BLUE}${KERNEL_VER}${GREEN}\n"
-printf "  - Distro version:         ${BLUE}${ANGSTROM_VER}${GREEN}\n"
-printf "  - Build image:            ${BLUE}${BUILD_IMG}${GREEN}\n"
-printf "      disk space required:  ${BLUE}${IMG_SIZE} GiB${GREEN}\n"
-printf "  - top build directory:    ${BLUE}${BUILD_DIR}${GREEN}\n"
-#printf "  - estimated build time:   ${BLUE}> 4 hours typical (processor dependent)${GREEN}\n"
-printf "\n"
-printf " If this is your first time using the Yocto Project OpenEmbedded\n"
-printf " build system on this computer, it may be necessary to exit this\n"   
-printf " script and first install some build tools and essential packages\n"
+printf " This is the Yocto v${YOCTO_REL} build script for the              \n"
+printf " ${BOARD_LONG}                                                     \n"
+printf " Current build configuration:                                      \n"
+#printf " Run script with --help to view customizable perameters.           \n"
+printf "  - GSRD release:           ${BLUE}${QTS_VER}${GREEN}              \n"
+printf "  - GHRD branch:            ${BLUE}${GHRD_BRANCH}${GREEN}          \n"
+printf "  - U-Boot version:         ${BLUE}${UBOOT_VER}${GREEN}            \n"
+printf "  - Kernel version:         ${BLUE}${KERNEL_VER}.nnn${GREEN}       \n"
+printf "  - Distro version:         ${BLUE}${ANGSTROM_VER}${GREEN}         \n"
+printf "  - Build image:            ${BLUE}${BUILD_IMG}${GREEN}            \n"
+printf "      disk space required:  ${BLUE}${IMG_SIZE} GiB${GREEN}         \n"
+printf "  - top build directory:    ${BLUE}${BUILD_DIR}${GREEN}            \n"
+printf "                                                                   \n"
+printf " If this is your first time using the Yocto Project OpenEmbedded   \n"
+printf " build system on this computer, it may be necessary to exit this   \n"   
+printf " script and first install some build tools and essential packages  \n"
 printf " as documented in the Yocto Project Reference Manual v${YOCTO_REL}.  You\n"
 printf " should run the ${NC}yocto-packages.sh${GREEN} script with root privileges as\n"
-printf " instructed on the rocketboards.org page to check for and install\n"
-printf " any missing build tools and packages.\n"
+printf " instructed on the rocketboards.org page to check for and install  \n"
+printf " any missing build tools and packages.                             \n"
 printf "*******************************************************************\n"
 echo -e ${NC}
 
