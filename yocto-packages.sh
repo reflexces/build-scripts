@@ -46,9 +46,13 @@
 #
 # 02/09/2021 - updated all Essentials package list for Yocto Project 3.1.5
 #            - tested with Ubuntu 20.04 (supported as stated in Yocto 3.1.5 documentation)
+#
 # 07/20/2021 - updated all Essentials package list for Yocto Project 3.2.4 (gatesgarth)
 #            - tested with Ubuntu 20.04 (supported as stated in Yocto 3.2.4 documentation)
-
+#
+# 12/15/2021 - updated all Essentials package list for Yocto Project 3.4.1 (honister)
+#            - tested with Ubuntu 20.04 (supported as stated in Yocto 3.4.1 documentation)
+#
 #################################################
 # Functions
 #################################################
@@ -221,11 +225,11 @@ case "$DISTRO" in
         # Essentials
         check_package 'gawk' 
         check_package 'wget'
-        check_package 'git-core' 
+        check_package 'git' 
         check_package 'diffstat'
         check_package 'unzip'
         check_package 'texinfo'
-        check_package 'gcc-multilib'
+        check_package 'gcc'
         check_package 'build-essential'
         check_package 'chrpath'
         check_package 'socat'
@@ -244,6 +248,8 @@ case "$DISTRO" in
         check_package 'xterm'
         check_package 'python3-subunit'
         check_package 'mesa-common-dev'
+        check_package 'zstd'
+        check_package 'liblz4-tool'
 # required for command line u-boot and kernel builds
         check_package 'bison'
         check_package 'flex'
@@ -290,6 +296,12 @@ case "$DISTRO" in
         check_package 'xterm'
         check_package 'rpcgen'
         check_package 'mesa-libGL-devel'
+        check_package 'erl-FindBin'
+        check_package 'perl-File-Compare'
+        check_package 'perl-File-Copy'
+        check_package 'perl-locale'
+        check_package 'zstd'
+        check_package 'lz4'
     ;;
     "OpenSUSE" | "openSUSE" | "openSUSE project")
         # Essentials
@@ -319,6 +331,9 @@ case "$DISTRO" in
         check_package 'xterm'
         check_package 'rpcgen'
         check_package 'Mesa-dri-devel'
+        check_package 'zstd'rpcgen Mesa-dri-devel zstd lz4
+
+        check_package 'lz4'
     ;;
     "CentOS")
         # Essentials
@@ -358,6 +373,8 @@ case "$DISTRO" in
         check_package 'xterm'
         check_package 'rpcgen'
         check_package 'mesa-libGL-devel'
+        check_package 'zstd'
+        check_package 'lz4'
     ;;
     *)
         echo ""
