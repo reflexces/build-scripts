@@ -296,7 +296,7 @@ build_all() {
 
     echo "MACHINE = \"${MACHINE}\"" >> conf/local.conf
 #    echo 'DISTRO_FEATURES_append = " usbgadget"' >> conf/local.conf
-    echo 'DISTRO_FEATURES_append = " systemd"' >> conf/local.conf
+    echo 'DISTRO_FEATURES:append = " systemd"' >> conf/local.conf
     echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >> conf/local.conf
 
 #		echo "DL_DIR = \"$location/downloads\"" >> conf/local.conf
