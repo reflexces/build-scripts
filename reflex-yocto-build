@@ -39,6 +39,9 @@
 #   - script overhaul to support Yocto Poky build due to Angstrom distribution EOL
 #   - this release supports the Yocto gatesgarth branch
 #
+# 2021.12
+#   - updated for Yocto 3.4.1 honister
+#
 # TODO: add dependecy checking to this sript (currently in yocto-packages.sh because the installation
 #       of packages, if necessary, requires root privileges); this script cannot run as root
 # TODO: add parameters to allow for more build customization (u-boot & kernel version, etc)
@@ -51,8 +54,8 @@
 #################################################
 
 # Script version variables
-YOCTO_REL=3.2.4
-YOCTO_BRANCH=gatesgarth
+YOCTO_REL=3.4.1
+YOCTO_BRANCH=honister
 SCRIPT_VERSION="Yocto ${YOCTO_BRANCH} Build Script"
 
 # Other configuration variables
@@ -61,10 +64,10 @@ BOARD=achilles
 MACHINE=$BOARD
 BOARD_LONG="not specified"
 BUILD_DIR=yocto-poky-$YOCTO_BRANCH
-GSRD_REL=2021.07
-GHRD_BRANCH=ghrd-v21.1-pr
-UBOOT_VER=v2021.01
-KERNEL_VER=v5.4
+GSRD_REL=2021.12
+GHRD_BRANCH=ghrd-v21.3-pr
+UBOOT_VER=v2021.07
+KERNEL_VER=v5.10
 BUILD_IMG=console
 IMG_SIZE=54
 
