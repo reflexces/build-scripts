@@ -53,6 +53,9 @@
 # 12/15/2021 - updated all Essentials package list for Yocto Project 3.4.1 (honister)
 #            - tested with Ubuntu 20.04 (supported as stated in Yocto 3.4.1 documentation)
 #
+# 06/01/2022 - updated all Essentials package list for Yocto Project 4.0.1 (kirkstone)
+#            - tested with Ubuntu 20.04
+#
 #################################################
 # Functions
 #################################################
@@ -250,10 +253,13 @@ case "$DISTRO" in
         check_package 'mesa-common-dev'
         check_package 'zstd'
         check_package 'liblz4-tool'
-# required for command line u-boot and kernel builds
+        # required for command line u-boot and kernel builds
         check_package 'bison'
         check_package 'flex'
         check_package 'device-tree-compiler'
+        # other
+        check_package 'pv'
+        check_package 'whiptail'
     ;;
     "Fedora")
         # Essentials
@@ -296,7 +302,7 @@ case "$DISTRO" in
         check_package 'xterm'
         check_package 'rpcgen'
         check_package 'mesa-libGL-devel'
-        check_package 'erl-FindBin'
+        check_package 'perl-FindBin'
         check_package 'perl-File-Compare'
         check_package 'perl-File-Copy'
         check_package 'perl-locale'
@@ -331,8 +337,7 @@ case "$DISTRO" in
         check_package 'xterm'
         check_package 'rpcgen'
         check_package 'Mesa-dri-devel'
-        check_package 'zstd'rpcgen Mesa-dri-devel zstd lz4
-
+        check_package 'zstd'
         check_package 'lz4'
     ;;
     "CentOS")
@@ -362,16 +367,11 @@ case "$DISTRO" in
         check_package 'perl-Data-Dumper'
         check_package 'perl-Text-ParseWords'
         check_package 'perl-Thread-Queue'
-        check_package 'python36-pip'
         check_package 'python3-pip'
-        check_package 'python3-GitPython'
-        check_package 'python3-jinja2'
-        check_package 'python3-pexpect'
         check_package 'xz'
         check_package 'which'
         check_package 'SDL-devel'
         check_package 'xterm'
-        check_package 'rpcgen'
         check_package 'mesa-libGL-devel'
         check_package 'zstd'
         check_package 'lz4'
