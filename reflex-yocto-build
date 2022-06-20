@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # MIT License
-# Copyright (c) 2020 REFLEX CES
+# Copyright (c) 2022 REFLEX CES
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -42,6 +42,13 @@
 # 2021.12
 #   - updated for Yocto 3.4.1 honister
 #
+# 2022.06
+#   - updated for Yocto 4.0.1 kirkstone
+#   - updated to support all 3 Achilles SOM versions
+#   - added a branch override option to support older Yocto branches, since older builds
+#     fail due to updates to master branch of meta-intel-fpga layer
+#   
+#
 # TODO: add dependecy checking to this sript (currently in yocto-packages.sh because the installation
 #       of packages, if necessary, requires root privileges); this script cannot run as root
 # TODO: add parameters to allow for more build customization (u-boot & kernel version, etc)
@@ -54,26 +61,24 @@
 #################################################
 
 # Script version variables
-YOCTO_REL=3.4.1
-YOCTO_BRANCH=honister
+YOCTO_REL=4.0.1
+YOCTO_BRANCH=kirkstone
+OVERRIDE_BRANCH=0
 SCRIPT_VERSION="Yocto ${YOCTO_BRANCH} Build Script"
 
 # Other configuration variables
 # set a default board for the build, can be changed with -b option
-BOARD=achilles
-MACHINE=$BOARD
+#BOARD=achilles-turbo
+#MACHINE=$BOARD
 BOARD_LONG="not specified"
-BUILD_DIR=yocto-poky-$YOCTO_BRANCH
-GSRD_REL=2021.12
-GHRD_BRANCH=ghrd-v21.3-pr
+#BUILD_DIR=${BOARD}-yocto-poky-$YOCTO_BRANCH
+USER_DIR=0
+GSRD_REL=2022.06
+GHRD_BRANCH=ghrd-v22.1
 UBOOT_VER=v2021.07
 KERNEL_VER=v5.10
 BUILD_IMG=console
 IMG_SIZE=54
-
-# These variables can be used to support integrated scripted Quartus builds of the GHRD for future release
-#QTS_VER=N/A
-#GHRD_BRANCH=N/A
 
 # Color text formatting
 RED='\033[0;31m'
@@ -81,7 +86,6 @@ GREEN='\033[0;32m'
 ORANGE='\033[0;33m'
 BLUE='\033[1;34m'
 CYAN='\033[0;36m'
-WHITE='\033[1;37m' # Not good for white terminal background
 NC='\033[0m' # No Color
 
 #################################################
@@ -91,12 +95,15 @@ NC='\033[0m' # No Color
 usage()
 {
     echo "Usage: ./reflex-yocto-build [options]"
-    echo "Yocto Project build script for ${ANGSTROM_VER}"
+    echo "Yocto Project build script for Yocto Poky v${YOCTO_REL} ${YOCTO_BRANCH}"
     echo "Options:"
     echo "  -b, --board [board name]       Target development board.  Currently supported boards:"
-    echo "                                   achilles"
-    echo "                                   alaric"
-    echo "                                   comxpress"
+    echo "                                   achilles-turbo (default if -b not specified)"
+    echo "                                   achilles-indus"
+    echo "                                   achilles-lite"
+    echo "                                   achilles (only valid for branch \"honister\" and older)"
+#   echo "                                   alaric"
+#   echo "                                   comxpress"
     echo ""
     echo "  -d, --directory [dir name]     Build directory name"
     echo "                                 If not specified, defaults to"
@@ -105,10 +112,12 @@ usage()
     echo "  -i, --image [image name]       Only these images names are valid:"
 #   echo "                                   xfce (XFCE graphical desktop, default if image not specified)"
     echo "                                   console (console applications only)"
-    echo "                                   uboot (builds U-Boot bootloader only)"
-    echo "                                   kernel (builds linux kernel only)"
+    echo "                                   u-boot (builds U-Boot bootloader only)"
+    echo "                                   kernel (builds Linux kernel only)"
     echo ""
-    echo "  -m, --menu                     Run the script in interactive menu mode."
+    echo "  -o, --override-branch          Script defaults to latest Poky branch."
+    echo "                                 Choose this option to override the"
+    echo "                                 default and select an older branch."
     echo ""
     echo "  -h, --help                     Display this help message and exit."
     echo ""
@@ -230,7 +239,7 @@ fetch_or_update_layers() {
         
         pushd $meta_layer > /dev/null
 
-        if [ $meta_layer = meta-intel-fpga ]; then
+        if [ $meta_layer = meta-intel-fpga ] && [ $OVERRIDE_BRANCH -eq 0 ]; then
             git checkout master
         else
             git checkout $YOCTO_BRANCH
@@ -248,7 +257,7 @@ fetch_or_update_layers() {
         git clone $source_url
         pushd $meta_layer
 
-        if [ $meta_layer = meta-intel-fpga ]; then
+        if [ $meta_layer = meta-intel-fpga ] && [ $OVERRIDE_BRANCH -eq 0 ]; then
             git checkout master
         else
             git checkout $YOCTO_BRANCH
@@ -294,18 +303,25 @@ build_all() {
 #		sed -i /MACHINE/d conf/local.conf
 #		sed -i /UBOOT_CONFIG/d conf/local.conf
 
-    echo "MACHINE = \"${MACHINE}\"" >> conf/local.conf
-#    echo 'DISTRO_FEATURES_append = " usbgadget"' >> conf/local.conf
-    echo 'DISTRO_FEATURES:append = " systemd"' >> conf/local.conf
-    echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >> conf/local.conf
-
-#		echo "DL_DIR = \"$location/downloads\"" >> conf/local.conf
-#		echo 'DISTRO_FEATURES_append = " systemd"' >> conf/local.conf
-#		echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >> conf/local.conf
-
-        # Build both Image and zImage for Arria10
-#       echo "KERNEL_ALT_IMAGETYPE = \"Image\"" >> conf/local.conf
-
+    case `grep "MACHINE = \"${MACHINE}\"" "conf/local.conf" > /dev/null; echo $?` in
+        0)
+            echo ""
+            echo "local.conf is already updated."
+        ;;
+        1)
+            echo "MACHINE = \"${MACHINE}\"" >> conf/local.conf
+        #    echo 'DISTRO_FEATURES_append = " usbgadget"' >> conf/local.conf
+            echo 'DISTRO_FEATURES:append = " systemd"' >> conf/local.conf
+            echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >> conf/local.conf
+            echo ""
+            echo "Updated local.conf."
+        ;;
+        *)
+            printf "${RED}ERROR: unable to update local.conf${NC}\n\n"
+            exit 1
+        ;;
+    esac
+        
     echo -e ${GREEN}
     echo "*******************************************************************"
     echo " Updating bblayers.conf...                                         "
@@ -320,11 +336,6 @@ build_all() {
     add_bblayers meta-openembedded/meta-networking
     add_bblayers meta-openembedded/meta-python
     
-#		echo -e "\n[INFO] Clean up previous kernel build if any"
-#		bitbake virtual/kernel -c cleanall
-#		echo -e "\n[INFO] Clean up previous u-boot build if any"
-#		bitbake u-boot-socfpga -c cleanall
-
     echo -e ${GREEN}
     echo "*******************************************************************"
     printf " Starting bitbake ${NC}${BUILD_IMG}${GREEN}...\n"
@@ -347,7 +358,7 @@ build_all() {
         printf " ${BLUE}${PWD}/${BOARD}-emmc-image${GREEN}\n"
         printf "\n"
         printf " All build output files can be found in the following directory:\n"
-        printf " ${BLUE}${PWD}/${BOARD}-build-files/tmp/deploy/images/${BOARD}${GREEN}\n"
+        printf " ${BLUE}${PWD}/tmp/deploy/images/${BOARD}${GREEN}\n"
         printf "\n"
         printf " If you built a full image (console or XFCE), you can now copy\n"
         printf " the eMMC image file to the board's eMMC device.  Refer to the\n"
@@ -394,14 +405,21 @@ while [ "$1" != "" ]; do
         -b | --board)
             shift
             BOARD=$1
+            MACHINE=$BOARD
         ;;
         -d | --directory)
             shift
             BUILD_DIR=$1
+            USER_DIR=1
         ;;
         -i | --image)
             shift
             BUILD_IMG=$1
+        ;;
+        -o | --override-branch)
+            shift
+            YOCTO_BRANCH=$1
+            OVERRIDE_BRANCH=1
         ;;
         -h | --help)
             usage
@@ -418,16 +436,43 @@ while [ "$1" != "" ]; do
     shift
 done
 
-# get board name, used for message printing
+# create long board name, used for message printing
+# create extra board definition variables to specify bitbake image
+# allows to share achilles image recipes across the 3 SOMs
 case $BOARD in
     alaric)
         BOARD_LONG="REFLEX CES Alaric Development Kit"
+        BOARD_BASE="alaric"
     ;;
-    achilles)
-        BOARD_LONG="REFLEX CES Achilles Development Kit"
+    achilles)  # legacy support for older branches
+        if [ $OVERRIDE_BRANCH -eq 0 ]; then
+            echo ""
+            echo "Board \"achilles\" only allowed when used with -o option."
+            echo ""
+            exit 1
+        else
+            BOARD_LONG="REFLEX CES Achilles Turbo SOM"
+            BOARD_BASE="achilles"
+        fi
+    ;;
+    achilles-turbo)
+        BOARD_LONG="REFLEX CES Achilles Turbo SOM"
+        BOARD_BASE="achilles"
+        SOM_VER="turbo"
+    ;;
+    achilles-indus)
+        BOARD_LONG="REFLEX CES Achilles Indus SOM"
+        BOARD_BASE="achilles"
+        SOM_VER="indus"
+    ;;
+    achilles-lite)
+        BOARD_LONG="REFLEX CES Achilles Lite SOM"
+        BOARD_BASE="achilles"
+        SOM_VER="lite"
     ;;
     comxpress)
         BOARD_LONG="REFLEX CES COMXPress Module"
+        BOARD_BASE="comxpress"
     ;;
     *)
         echo ""
@@ -442,34 +487,33 @@ esac
 # actual BUILD_DIR folder sizes:
 #  - uboot                      = 10,949,536,237 (10.2 GiB)
 #  - kernel                     = 13,080,589,500 (12.2 GiB)
-#  - arrow-sockit-console-image = 35,017,792,910 (32.6 GiB)
-#  - arrow-sockit-xfce-image    = 75,888,997,849 (70.7 GiB)
+#  - achilles-console-image     = 60,886,474,323 (56.7 GiB)
+#  - achilles-xfce-image        = TBD (?? GiB)
 # these actual image sizes will likely not be updated in new
 # releases of the script as this was more of an acedemic exercise
 
 case $BUILD_IMG in
-    xfce)
-        BUILD_IMG=$BOARD-xfce-image
-#        IMG_SIZE=75
-        IMG_SIZE=45
-     ;;
+# XCFE image not yet supported
+#    xfce)
+#        BUILD_IMG=$BOARD-xfce-image
+##        IMG_SIZE=75
+#        IMG_SIZE=45
+#     ;;
     console)
-        BUILD_IMG=$BOARD-console-image
-        IMG_SIZE=54
+        BUILD_IMG=$BOARD_BASE-console-image
+        IMG_SIZE=58
     ;;
-    uboot)
+    u-boot)
         BUILD_IMG=virtual/bootloader
         IMG_SIZE=11
         KERNEL_VER=NA
         GHRD_BRANCH=NA
-        #ANGSTROM_VER=NA
     ;;
     kernel)
         BUILD_IMG=virtual/kernel
         IMG_SIZE=13
         UBOOT_VER=NA
         GHRD_BRANCH=NA
-        #ANGSTROM_VER=NA
     ;;
     *)
         echo ""
@@ -477,6 +521,10 @@ case $BUILD_IMG in
         echo ""
         exit 1
 esac
+
+if [ $USER_DIR -eq 0 ]; then
+   BUILD_DIR=${BOARD}-yocto-poky-$YOCTO_BRANCH
+fi
 
 # if BUILD_DIR exists, skip checking disk space because this could be
 # adding to a previous build (e.g. bootloader or kernel only),
@@ -513,11 +561,11 @@ printf " This is the Yocto v${YOCTO_REL} build script for the              \n"
 printf " ${BOARD_LONG}                                                     \n"
 printf " Current build configuration:                                      \n"
 #printf " Run script with --help to view customizable perameters.           \n"
-printf "  - GSRD release:           ${BLUE}${QTS_VER}${GREEN}              \n"
+printf "  - GSRD release:           ${BLUE}${GSRD_REL}${GREEN}             \n"
 printf "  - GHRD branch:            ${BLUE}${GHRD_BRANCH}${GREEN}          \n"
 printf "  - U-Boot version:         ${BLUE}${UBOOT_VER}${GREEN}            \n"
 printf "  - Kernel version:         ${BLUE}${KERNEL_VER}.nnn${GREEN}       \n"
-printf "  - Distro version:         ${BLUE}${ANGSTROM_VER}${GREEN}         \n"
+printf "  - Distro version:         ${BLUE}yocto-poky-${YOCTO_BRANCH}${GREEN}\n"
 printf "  - Build image:            ${BLUE}${BUILD_IMG}${GREEN}            \n"
 printf "      disk space required:  ${BLUE}${IMG_SIZE} GiB${GREEN}         \n"
 printf "  - top build directory:    ${BLUE}${BUILD_DIR}${GREEN}            \n"
