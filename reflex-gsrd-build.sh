@@ -290,14 +290,14 @@ get_branch() {
 
     case $BRANCH_SEL in
         "LATEST BRANCH")
-            USE_BRANCH=$LATEST_BRANCH
+            YOCTO_BRANCH=$LATEST_BRANCH
         ;;
         "HONISTER")
-            USE_BRANCH=honister
+            YOCTO_BRANCH=honister
             OVERRIDE_BRANCH=1
         ;;
         "GATESGARTH")
-            USE_BRANCH=gatesgarth
+            YOCTO_BRANCH=gatesgarth
             OVERRIDE_BRANCH=1
         ;;
         *)
@@ -328,7 +328,7 @@ review_selections() {
     if [ $BUILD_YOCTO -eq 1 ]; then
         echo "YOCTO Options:" >> build.config    
         echo "   Yocto Image = $INFO_YOCTO_IMG" >> build.config
-        echo "   Yocto/Poky Branch = $USE_BRANCH" >> build.config
+        echo "   Yocto/Poky Branch = $YOCTO_BRANCH" >> build.config
         echo "" >> build.config
     fi
     
@@ -378,7 +378,7 @@ export BUILD_GHRD=$BUILD_GHRD
 # https://docs.yoctoproject.org/migration-guides/migration-4.0.html?highlight=bb_env_extrawhite
 
 # TODO: This feature not yet tested
-#if [ "$USE_BRANCH" = "kirkstone" ]; then
+#if [ "$YOCTO_BRANCH" = "kirkstone" ]; then
 #    export BB_ENV_PASSTHROUGH_ADDITIONS=BUILD_GHRD
 #else
 #    export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE BUILD_GHRD"
@@ -388,16 +388,16 @@ export BUILD_GHRD=$BUILD_GHRD
 
 if [ $BUILD_GHRD -eq 1 ]; then
     if [ ! -f achilles-ghrd-build.sh ]; then
-        wget https://raw.githubusercontent.com/reflexces/build-scripts/$USE_BRANCH/achilles-ghrd-build.sh
+        wget https://raw.githubusercontent.com/reflexces/build-scripts/master/achilles-ghrd-build.sh
         ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE
     fi
 fi
 
 if [ $BUILD_YOCTO -eq 1 ]; then 
     if [ ! -f reflex-yocto-build ]; then
-        wget https://raw.githubusercontent.com/reflexces/build-scripts/$USE_BRANCH/reflex-yocto-build
+        wget https://raw.githubusercontent.com/reflexces/build-scripts/master/reflex-yocto-build
         if [ $OVERRIDE_BRANCH -eq 1 ]; then
-            ./reflex-yocto-build -b $BOARD -i $YOCTO_IMG -o $USE_BRANCH
+            ./reflex-yocto-build -b $BOARD -i $YOCTO_IMG -o $YOCTO_BRANCH
         else
             ./reflex-yocto-build -b $BOARD -i $YOCTO_IMG
         fi
@@ -406,7 +406,7 @@ fi
 
 if [ $PROGRAM_MMC -eq 1 ]; then
     if [ ! -f program-emmc.sh ]; then
-        wget https://raw.githubusercontent.com/reflexces/build-scripts/$USE_BRANCH/program-emmc.sh
+        wget https://raw.githubusercontent.com/reflexces/build-scripts/master/program-emmc.sh
         ./program-emmc.sh -b $BOARD -p full
     fi
 fi
