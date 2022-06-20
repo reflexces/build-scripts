@@ -1,0 +1,613 @@
+#!/bin/bash
+#
+# MIT License
+# Copyright (c) 2022 REFLEX CES
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Author: Dan Negvesky <dnegvesky@reflexces.com>
+# Contributors:
+#
+# Release info:
+#
+# 2019.05
+#   - initial release for REFLEX CES COMXpressSX Stratix 10 module
+#
+# 2020.05
+#   - updated for release for REFLEX CES Achilles SOM, Angstrom v2019.06-warrior
+#
+# 2021.02
+#   - updated for Yocto 3.1.4 dunfell
+#
+# 2021.05
+#   - script overhaul to support Yocto Poky build due to Angstrom distribution EOL
+#   - this release supports the Yocto gatesgarth branch
+#
+# 2021.12
+#   - updated for Yocto 3.4.1 honister
+#
+# 2022.06
+#   - updated for Yocto 4.0.1 kirkstone
+#   - updated to support all 3 Achilles SOM versions
+#   - added a branch override option to support older Yocto branches, since older builds
+#     fail due to updates to master branch of meta-intel-fpga layer
+#   
+#
+# TODO: add dependecy checking to this sript (currently in yocto-packages.sh because the installation
+#       of packages, if necessary, requires root privileges); this script cannot run as root
+# TODO: add parameters to allow for more build customization (u-boot & kernel version, etc)
+#       pass arguments to variables that are written to Yocto config files
+# TODO: add better flow control: if BUILD_DIR exists then skip the setup and go right to bitbake
+#
+
+#################################################
+# Variables
+#################################################
+
+# Script version variables
+YOCTO_REL=4.0.1
+YOCTO_BRANCH=kirkstone
+OVERRIDE_BRANCH=0
+SCRIPT_VERSION="Yocto ${YOCTO_BRANCH} Build Script"
+
+# Other configuration variables
+# set a default board for the build, can be changed with -b option
+#BOARD=achilles-turbo
+#MACHINE=$BOARD
+BOARD_LONG="not specified"
+#BUILD_DIR=${BOARD}-yocto-poky-$YOCTO_BRANCH
+USER_DIR=0
+GSRD_REL=2022.06
+GHRD_BRANCH=ghrd-v22.1
+UBOOT_VER=v2021.07
+KERNEL_VER=v5.10
+BUILD_IMG=console
+IMG_SIZE=54
+
+# Color text formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+ORANGE='\033[0;33m'
+BLUE='\033[1;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+#################################################
+# Functions
+#################################################
+
+usage()
+{
+    echo "Usage: ./reflex-yocto-build [options]"
+    echo "Yocto Project build script for Yocto Poky v${YOCTO_REL} ${YOCTO_BRANCH}"
+    echo "Options:"
+    echo "  -b, --board [board name]       Target development board.  Currently supported boards:"
+    echo "                                   achilles-turbo (default if -b not specified)"
+    echo "                                   achilles-indus"
+    echo "                                   achilles-lite"
+    echo "                                   achilles (only valid for branch \"honister\" and older)"
+#   echo "                                   alaric"
+#   echo "                                   comxpress"
+    echo ""
+    echo "  -d, --directory [dir name]     Build directory name"
+    echo "                                 If not specified, defaults to"
+    echo "                                 ${BUILD_DIR}"
+    echo ""
+    echo "  -i, --image [image name]       Only these images names are valid:"
+#   echo "                                   xfce (XFCE graphical desktop, default if image not specified)"
+    echo "                                   console (console applications only)"
+    echo "                                   u-boot (builds U-Boot bootloader only)"
+    echo "                                   kernel (builds Linux kernel only)"
+    echo ""
+    echo "  -o, --override-branch          Script defaults to latest Poky branch."
+    echo "                                 Choose this option to override the"
+    echo "                                 default and select an older branch."
+    echo ""
+    echo "  -h, --help                     Display this help message and exit."
+    echo ""
+    echo "  -v, --version                  Display script version info and exit."
+    echo ""
+}
+
+check_disk_space()
+{
+    # assuming OK to work in GB due to large image and HDD sizes
+    FREE_SPACE=`df --block-size=1G $PWD | awk '/[0-9]%/{print $(NF-2)}'`
+
+    echo -e ${GREEN}
+    printf "\n*******************************************************************\n"
+    printf " Checking available disk space... \n"
+    printf "*******************************************************************\n"
+    echo -e ${NC}
+    sleep 1
+    if [ "$FREE_SPACE" -lt "$IMG_SIZE" ]; then
+        printf "Available: ${FREE_SPACE} GB\n"
+        printf "Required: ${IMG_SIZE} GB\n"
+        printf "Please free at least $(($IMG_SIZE - $FREE_SPACE)) GB and then rerun the build script.\n"
+        exit 1
+    else
+        printf "OK\n"
+    fi
+
+FREE_SPACE=`df --block-size=1G $PWD | awk '/[0-9]%/{print $(NF-2)}'`
+}
+
+# On new installations of git, make sure it has been configured with
+# user's name and e-mail.
+check_git_config()
+{
+    echo -e ${GREEN}
+    printf "\n*******************************************************************\n"
+    printf " Checking git global configuration... \n"
+    printf "*******************************************************************\n"
+    echo -e ${NC}
+    sleep 2
+    if [[ ! $(git config user.name) || ! $(git config user.email) ]]; then
+        printf "\nIt appears that git has not yet been configured with"
+        printf "\nyour name or e-mail address (this is required for repo)."
+        printf "\nI can set this up for you.\n"
+        correct=false
+        fix_name=false
+        fix_email=false
+        while ! $correct; do
+            # don't accept blank name
+            while [[ -z $GIT_NAME ]] || $fix_name; do
+                printf "Please enter your first and last name (e.g. John Doe): "
+                read GIT_NAME
+                fix_name=false
+            done
+            # don't accept blank e-mail
+            while [[ -z $GIT_EMAIL ]] || $fix_email; do
+                printf "Please enter your e-mail address (e.g. username@domain): "
+                read GIT_EMAIL
+                fix_email=false
+            done
+            # verify entries
+            printf "\nYou have entered your name as: ${GIT_NAME}"
+            printf "\nYou have entered your e-mail as: ${GIT_EMAIL}"
+            printf "\n\nIs this correct? "
+            read -r -p "[Y to proceed / N to fix Name / E to fix e-mail / B to fix both Name and e-mail] " correct
+                case "$correct" in
+                    [yY][eE][sS]|[yY])
+                        correct=true
+                    ;;
+                    [nN])
+                        correct=false
+                        fix_name=true
+                    ;;
+                    [eE])
+                        correct=false
+                        fix_email=true
+                    ;;
+                    [bB])
+                        correct=false
+                        fix_name=true
+                        fix_email=true
+                    ;;
+                    *)
+                        correct=false
+                        fix_name=true
+                        fix_email=true
+                esac
+        done
+        git config --global user.name "$GIT_NAME"
+        git config --global user.email "$GIT_EMAIL"
+    else
+        printf "OK\n"
+    fi
+}
+
+# ------------------------------------------------------------------
+# function name: fetch_or_update_layers
+# function usage: fetch_or_update_layers "layer name" "source URL"
+# function description: download layers required for build;
+#    if layer exists, get latest updates
+#
+# TODO: fix updating of meta-achilles; not pulling updates from
+# branches other than master; use git pull origin $YOCTO_BRANCH
+# instead if it exists?
+# ------------------------------------------------------------------
+
+fetch_or_update_layers() {
+    meta_layer=$1
+    source_url=$2
+    pushd $BUILD_DIR > /dev/null
+    pushd layers > /dev/null
+
+    if [ -d "$meta_layer" ]; then
+        echo -e ${GREEN}
+        echo "*******************************************************************"
+        echo " Fetching latest updates for $meta_layer...                        "
+        echo "*******************************************************************"
+        echo -e ${NC}
+        
+        pushd $meta_layer > /dev/null
+
+        if [ $meta_layer = meta-intel-fpga ] && [ $OVERRIDE_BRANCH -eq 0 ]; then
+            git checkout master
+        else
+            git checkout $YOCTO_BRANCH
+        fi
+
+        git pull
+        popd > /dev/null        
+    else
+        echo -e ${GREEN}
+        echo "*******************************************************************"
+        echo " Downloading source for $meta_layer...                             "
+        echo "*******************************************************************"
+        echo -e ${NC}
+        
+        git clone $source_url
+        pushd $meta_layer
+
+        if [ $meta_layer = meta-intel-fpga ] && [ $OVERRIDE_BRANCH -eq 0 ]; then
+            git checkout master
+        else
+            git checkout $YOCTO_BRANCH
+        fi
+
+        popd > /dev/null
+    fi
+    
+    popd > /dev/null
+    popd > /dev/null
+}
+
+add_bblayers() {
+    layer_name=$1
+    case `grep "$layer_name" "conf/bblayers.conf" > /dev/null; echo $?` in
+        0)
+            echo "Layer $layer_name already added to bblayers.conf"
+        ;;
+        1)
+            echo 'BBLAYERS += " ${TOPDIR}/../layers/'$layer_name' "' >> conf/bblayers.conf
+            echo "Added layer $layer_name"
+        ;;
+        *)
+            printf "${RED}ERROR: unable to update bblayers.conf${NC}\n\n"
+            exit 1
+        ;;
+    esac
+}
+
+build_all() {
+    pushd $BUILD_DIR > /dev/null
+
+    echo -e ${GREEN}
+    echo "*******************************************************************"
+    echo " Initializing poky build environment...                            "
+    echo "*******************************************************************"
+    echo -e ${NC}
+
+    source layers/poky/oe-init-build-env ./$BOARD-build-files/
+
+		# Settings for local.conf
+#		echo -e "\n[INFO] Update local.conf"
+#		sed -i /MACHINE/d conf/local.conf
+#		sed -i /UBOOT_CONFIG/d conf/local.conf
+
+    case `grep "MACHINE = \"${MACHINE}\"" "conf/local.conf" > /dev/null; echo $?` in
+        0)
+            echo ""
+            echo "local.conf is already updated."
+        ;;
+        1)
+            echo "MACHINE = \"${MACHINE}\"" >> conf/local.conf
+        #    echo 'DISTRO_FEATURES_append = " usbgadget"' >> conf/local.conf
+            echo 'DISTRO_FEATURES:append = " systemd"' >> conf/local.conf
+            echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >> conf/local.conf
+            echo ""
+            echo "Updated local.conf."
+        ;;
+        *)
+            printf "${RED}ERROR: unable to update local.conf${NC}\n\n"
+            exit 1
+        ;;
+    esac
+        
+    echo -e ${GREEN}
+    echo "*******************************************************************"
+    echo " Updating bblayers.conf...                                         "
+    echo "*******************************************************************"
+    echo -e ${NC}
+
+# additional layers required for your build should be added here and below
+# in when calling the fetch_or_update_layers function
+    add_bblayers meta-intel-fpga
+    add_bblayers meta-achilles
+    add_bblayers meta-openembedded/meta-oe
+    add_bblayers meta-openembedded/meta-networking
+    add_bblayers meta-openembedded/meta-python
+    
+    echo -e ${GREEN}
+    echo "*******************************************************************"
+    printf " Starting bitbake ${NC}${BUILD_IMG}${GREEN}...\n"
+    echo "*******************************************************************"
+    echo -e ${NC}
+
+    if bitbake $BUILD_IMG ; then
+        # copy the WIC image to an image directory
+        cp -L tmp/deploy/images/$BOARD/$BUILD_IMG-$BOARD.wic ../$BOARD-emmc-image
+        
+        # display elapsed build time for successful build
+        ELAPSED="$(($SECONDS / 3600)) hrs $((($SECONDS / 60) % 60)) min $(($SECONDS % 60)) sec"
+        echo -e ${GREEN}
+        printf "*******************************************************************\n"
+        printf " Build of ${NC}${BUILD_IMG}${GREEN}\n"
+        printf " completed successfully in ${NC}${ELAPSED}${GREEN}\n"
+        printf " on ${NC}$(date -d "today" +"%m-%d-%Y %H:%M")${GREEN}\n"
+        printf "\n"
+        printf " The eMMC WIC image has been copied to the following directory:\n"
+        printf " ${BLUE}${PWD}/${BOARD}-emmc-image${GREEN}\n"
+        printf "\n"
+        printf " All build output files can be found in the following directory:\n"
+        printf " ${BLUE}${PWD}/tmp/deploy/images/${BOARD}${GREEN}\n"
+        printf "\n"
+        printf " If you built a full image (console or XFCE), you can now copy\n"
+        printf " the eMMC image file to the board's eMMC device.  Refer to the\n"
+        printf " rocketboards.org board article for programming instructions.\n"
+        printf "*******************************************************************\n"
+        printf "\n"
+        echo -e ${NC}
+
+    else
+        echo -e ${ORANGE}
+        echo "*******************************************************************"
+        echo " It looks like something went wrong with bitbake.  Either you      "
+        echo " manually interrupted the build process or bitbake encountered an  "
+        echo " an error.  Copy & paste any error messages into your web browser  "
+        echo " search engine to attempt to debug the issue.                      "
+        echo " It is also possible that a required build tool is still missing   "
+        echo " that was not detected for your Linux distribution by the          "
+        echo " yocto-packages.sh dependency check script.  Please refer to the   "
+        echo " Yocto Project Reference Manual, \"Required Packages for Host      "
+        echo " Development System\" section.                                     "
+        echo "*******************************************************************"
+        echo -e ${NC}
+    fi
+    popd > /dev/null
+}
+
+#################################################
+# Main
+#################################################
+
+# ensure not running as root
+if [ `whoami` = root ] ; then
+    printf "\n${RED}ERROR: Do not run this script as root\n\n"
+    exit 1
+fi
+
+# check arguments
+while [ "$1" != "" ]; do
+    case $1 in
+        -v | --version)
+            echo "${SCRIPT_VERSION}"
+            exit
+        ;;
+        -b | --board)
+            shift
+            BOARD=$1
+            MACHINE=$BOARD
+        ;;
+        -d | --directory)
+            shift
+            BUILD_DIR=$1
+            USER_DIR=1
+        ;;
+        -i | --image)
+            shift
+            BUILD_IMG=$1
+        ;;
+        -o | --override-branch)
+            shift
+            YOCTO_BRANCH=$1
+            OVERRIDE_BRANCH=1
+        ;;
+        -h | --help)
+            usage
+            exit
+        ;;
+        -m | --menu)
+            echo "The menu feature is not yet implemented"
+            exit
+        ;;
+        *)
+            usage
+            exit 1
+    esac
+    shift
+done
+
+# create long board name, used for message printing
+# create extra board definition variables to specify bitbake image
+# allows to share achilles image recipes across the 3 SOMs
+case $BOARD in
+    alaric)
+        BOARD_LONG="REFLEX CES Alaric Development Kit"
+        BOARD_BASE="alaric"
+    ;;
+    achilles)  # legacy support for older branches
+        if [ $OVERRIDE_BRANCH -eq 0 ]; then
+            echo ""
+            echo "Board \"achilles\" only allowed when used with -o option."
+            echo ""
+            exit 1
+        else
+            BOARD_LONG="REFLEX CES Achilles Turbo SOM"
+            BOARD_BASE="achilles"
+        fi
+    ;;
+    achilles-turbo)
+        BOARD_LONG="REFLEX CES Achilles Turbo SOM"
+        BOARD_BASE="achilles"
+        SOM_VER="turbo"
+    ;;
+    achilles-indus)
+        BOARD_LONG="REFLEX CES Achilles Indus SOM"
+        BOARD_BASE="achilles"
+        SOM_VER="indus"
+    ;;
+    achilles-lite)
+        BOARD_LONG="REFLEX CES Achilles Lite SOM"
+        BOARD_BASE="achilles"
+        SOM_VER="lite"
+    ;;
+    comxpress)
+        BOARD_LONG="REFLEX CES COMXPress Module"
+        BOARD_BASE="comxpress"
+    ;;
+    *)
+        echo ""
+        echo "Invalid board name specified.  Use --help for valid image names."
+        echo ""
+        exit 1
+esac
+
+# set build parameter variables based on image specified
+# IMG_SIZE = size in bytes / (1024 * 1,000,000)
+# image sizes are rounded up conservatively
+# actual BUILD_DIR folder sizes:
+#  - uboot                      = 10,949,536,237 (10.2 GiB)
+#  - kernel                     = 13,080,589,500 (12.2 GiB)
+#  - achilles-console-image     = 60,886,474,323 (56.7 GiB)
+#  - achilles-xfce-image        = TBD (?? GiB)
+# these actual image sizes will likely not be updated in new
+# releases of the script as this was more of an acedemic exercise
+
+case $BUILD_IMG in
+# XCFE image not yet supported
+#    xfce)
+#        BUILD_IMG=$BOARD-xfce-image
+##        IMG_SIZE=75
+#        IMG_SIZE=45
+#     ;;
+    console)
+        BUILD_IMG=$BOARD_BASE-console-image
+        IMG_SIZE=58
+    ;;
+    u-boot)
+        BUILD_IMG=virtual/bootloader
+        IMG_SIZE=11
+        KERNEL_VER=NA
+        GHRD_BRANCH=NA
+    ;;
+    kernel)
+        BUILD_IMG=virtual/kernel
+        IMG_SIZE=13
+        UBOOT_VER=NA
+        GHRD_BRANCH=NA
+    ;;
+    *)
+        echo ""
+        echo "Invalid image name specified.  Use --help for valid image names."
+        echo ""
+        exit 1
+esac
+
+if [ $USER_DIR -eq 0 ]; then
+   BUILD_DIR=${BOARD}-yocto-poky-$YOCTO_BRANCH
+fi
+
+# if BUILD_DIR exists, skip checking disk space because this could be
+# adding to a previous build (e.g. bootloader or kernel only),
+# assume the check was done then
+#echo -e ${WHITE}
+if [ ! -d "$BUILD_DIR" ]; then
+    check_disk_space
+    check_git_config
+else
+    printf "\n${BUILD_DIR} directory already exists.\n"
+    printf "Maybe you intended to run this in another directory.\n"
+    read -r -p "Continue from previous build? [y/N] " response
+    case "$response" in
+        [yY][eE][sS]|[yY]) 
+            printf "\n"
+        ;;
+        *)
+            exit 1
+        ;;
+    esac
+fi
+#echo -e ${NC}
+
+# ensure that there is 1GB of free space in the rootfs image for user files
+# and add this variable to the bitbake variables whitelist
+# this is done now in the .wks file
+#export IMAGE_ROOTFS_EXTRA_SPACE="1048576"
+#export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE IMAGE_ROOTFS_EXTRA_SPACE"
+
+# print introduction, ask for confirmation
+echo -e ${GREEN}
+printf "*******************************************************************\n"
+printf " This is the Yocto v${YOCTO_REL} build script for the              \n"
+printf " ${BOARD_LONG}                                                     \n"
+printf " Current build configuration:                                      \n"
+#printf " Run script with --help to view customizable perameters.           \n"
+printf "  - GSRD release:           ${BLUE}${GSRD_REL}${GREEN}             \n"
+printf "  - GHRD branch:            ${BLUE}${GHRD_BRANCH}${GREEN}          \n"
+printf "  - U-Boot version:         ${BLUE}${UBOOT_VER}${GREEN}            \n"
+printf "  - Kernel version:         ${BLUE}${KERNEL_VER}.nnn${GREEN}       \n"
+printf "  - Distro version:         ${BLUE}yocto-poky-${YOCTO_BRANCH}${GREEN}\n"
+printf "  - Build image:            ${BLUE}${BUILD_IMG}${GREEN}            \n"
+printf "      disk space required:  ${BLUE}${IMG_SIZE} GiB${GREEN}         \n"
+printf "  - top build directory:    ${BLUE}${BUILD_DIR}${GREEN}            \n"
+printf "                                                                   \n"
+printf " If this is your first time using the Yocto Project OpenEmbedded   \n"
+printf " build system on this computer, it may be necessary to exit this   \n"   
+printf " script and first install some build tools and essential packages  \n"
+printf " as documented in the Yocto Project Reference Manual v${YOCTO_REL}.  You\n"
+printf " should run the ${NC}yocto-packages.sh${GREEN} script with root privileges as\n"
+printf " instructed on the rocketboards.org page to check for and install  \n"
+printf " any missing build tools and packages.                             \n"
+printf "*******************************************************************\n"
+echo -e ${NC}
+
+#echo -e ${WHITE}
+echo "Verify build configuration.  Exit and rerun script with --help to make changes."
+read -r -p "Continue? [y/N] " response
+case "$response" in
+    [yY][eE][sS]|[yY]) 
+        printf "\n"
+    ;;
+    *)
+        exit 1
+    ;;
+esac
+#echo -e ${NC}
+
+# create the BUILD_DIR and MACHINE build directories
+mkdir -p $BUILD_DIR
+mkdir -p $BUILD_DIR/$BOARD-emmc-image
+mkdir -p $BUILD_DIR/layers
+mkdir -p $BUILD_DIR/$BOARD-build-files
+
+# start a build time counter
+SECONDS=0
+
+# additional layers required for your build should be added here
+fetch_or_update_layers poky https://git.yoctoproject.org/git/poky.git
+fetch_or_update_layers meta-intel-fpga https://git.yoctoproject.org/git/meta-intel-fpga
+fetch_or_update_layers meta-openembedded https://git.openembedded.org/meta-openembedded
+fetch_or_update_layers meta-achilles https://github.com/reflexces/meta-achilles.git
+# use next line for testing only; comment out line above
+#fetch_or_update_layers meta-achilles /home/dan/work/github/meta-achilles.git
+
+build_all
