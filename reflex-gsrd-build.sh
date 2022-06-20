@@ -217,8 +217,8 @@ get_ghrd_type() {
     # check for Quartus tools in the expected location
     if [ ! -d $QTS_TOOL_PATH ]; then
         QTS_TOOL_PATH=$(whiptail \
-            --title "Create New User" \
-            --inputbox "\nQuartus tools were not found in default installation path $QTS_TOOL_PATH.  Please enter the full path to your Quartus installation \"bin\" directory:" 10 60 3>&1 1>&2 2>&3 $QTS_TOOL_PATH \
+            --title "Quartus Tool Path" \
+            --inputbox "\nQuartus tools were not found in default installation path $QTS_TOOL_PATH.  Please enter the full path to your Quartus installation \"bin\" directory:" 12 60 3>&1 1>&2 2>&3 $QTS_TOOL_PATH \
         )
     fi
 
@@ -389,24 +389,25 @@ export BUILD_GHRD=$BUILD_GHRD
 if [ $BUILD_GHRD -eq 1 ]; then
     if [ ! -f achilles-ghrd-build.sh ]; then
         wget https://raw.githubusercontent.com/reflexces/build-scripts/master/achilles-ghrd-build.sh
-        ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE
     fi
+    ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE
 fi
 
 if [ $BUILD_YOCTO -eq 1 ]; then 
     if [ ! -f reflex-yocto-build ]; then
         wget https://raw.githubusercontent.com/reflexces/build-scripts/master/reflex-yocto-build
-        if [ $OVERRIDE_BRANCH -eq 1 ]; then
-            ./reflex-yocto-build -b $BOARD -i $YOCTO_IMG -o $YOCTO_BRANCH
-        else
-            ./reflex-yocto-build -b $BOARD -i $YOCTO_IMG
-        fi
+    fi
+
+    if [ $OVERRIDE_BRANCH -eq 1 ]; then
+        ./reflex-yocto-build -b $BOARD -i $YOCTO_IMG -o $YOCTO_BRANCH
+    else
+        ./reflex-yocto-build -b $BOARD -i $YOCTO_IMG
     fi
 fi
 
 if [ $PROGRAM_MMC -eq 1 ]; then
     if [ ! -f program-emmc.sh ]; then
         wget https://raw.githubusercontent.com/reflexces/build-scripts/master/program-emmc.sh
-        ./program-emmc.sh -b $BOARD -p full
     fi
+    ./program-emmc.sh -b $BOARD -p full
 fi
