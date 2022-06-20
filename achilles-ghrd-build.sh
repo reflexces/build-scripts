@@ -46,7 +46,7 @@ USER_DIR=0
 SCRIPT_VERSION=ghrd-v$QTS_VER
 
 # set this to 1 during development/test and specify local GHRD repo
-DEBUG=1
+DEBUG=0
 DEBUG_REPO=~/work/github
 
 #################################################
