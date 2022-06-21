@@ -390,7 +390,7 @@ if [ $BUILD_GHRD -eq 1 ]; then
     if [ ! -f achilles-ghrd-build.sh ]; then
         wget https://raw.githubusercontent.com/reflexces/build-scripts/master/achilles-ghrd-build.sh
     fi
-    ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE
+    ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE -t $QTS_TOOL_PATH
 fi
 
 if [ $BUILD_YOCTO -eq 1 ]; then 

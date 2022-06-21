@@ -38,8 +38,18 @@ BLUE='\033[1;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+OS_IS_WINDOWS=$(uname -a | grep -c Microsoft)
+
+# latest tested version of Quartus Prime Pro is v22.1
+# you may override the version here but results are not guaranteed
+# TODO: add Quartus version option to script arguments
 QTS_VER=22.1
-QTS_TOOL_PATH=$HOME/intelFPGA_pro/$QTS_VER/quartus/bin
+
+if [ $OS_IS_WINDOWS -ne 0 ]; then
+    QTS_TOOL_PATH=/mnt/c/intelFPGA_pro/$QTS_VER/quartus/bin64
+else
+    QTS_TOOL_PATH=$HOME/intelFPGA_pro/$QTS_VER/quartus/bin
+fi
 
 USER_DIR=0
 
@@ -70,6 +80,9 @@ usage()
     echo ""
     echo "  -d, --directory [dir name]     Build directory name (optional)."
     echo "                                 If not specified, a default directory name is used."
+    echo ""
+    echo "  -t, --tool-path [dir name]     Quartus installation tool path (must specify full"
+    echo "                                 path to \"bin\" or \"bin64\" directory)."
     echo ""
     echo "  -h, --help                     Display this help message and exit."
     echo ""
@@ -174,6 +187,10 @@ while [ "$1" != "" ]; do
                     echo ""
                     exit 1
                 fi
+        ;;
+        -t | --tool-path)
+            shift
+            QTS_TOOL_PATH=$1
         ;;
         -h | --help)
             usage
