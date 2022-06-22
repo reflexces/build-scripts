@@ -96,32 +96,33 @@ usage()
 {
     echo "Usage: ./reflex-yocto-build [options]"
     echo "Yocto Project build script for Yocto Poky v${YOCTO_REL} ${YOCTO_BRANCH}"
+    echo ""
     echo "Options:"
-    echo "  -b, --board [board name]       Target development board.  Currently supported boards:"
-    echo "                                   achilles-turbo (default if -b not specified)"
-    echo "                                   achilles-indus"
-    echo "                                   achilles-lite"
-    echo "                                   achilles (only valid for branch \"honister\" and older)"
-#   echo "                                   alaric"
-#   echo "                                   comxpress"
+    echo "  -b, --board [board]               Target development board (required).  Currently supported boards:"
+    echo "                                      achilles-turbo (default if -b not specified)"
+    echo "                                      achilles-indus"
+    echo "                                      achilles-lite"
+    echo "                                      achilles (only valid for branch \"honister\" and older)"
+#   echo "                                      alaric"
+#   echo "                                      comxpress"
     echo ""
-    echo "  -d, --directory [dir name]     Build directory name"
-    echo "                                 If not specified, defaults to"
-    echo "                                 ${BUILD_DIR}"
+    echo "  -d, --directory [dir]             Build directory name (optional)."
+    echo "                                    If not specified, defaults to"
+    echo "                                    ${BUILD_DIR}"
     echo ""
-    echo "  -i, --image [image name]       Only these images names are valid:"
-#   echo "                                   xfce (XFCE graphical desktop, default if image not specified)"
-    echo "                                   console (console applications only)"
-    echo "                                   u-boot (builds U-Boot bootloader only)"
-    echo "                                   kernel (builds Linux kernel only)"
+    echo "  -i, --image [image]               Yocto image type to build (required).  Only these images names are valid:"
+#   echo "                                      xfce (XFCE graphical desktop, default if image not specified)"
+    echo "                                      console (console applications only)"
+    echo "                                      u-boot (builds U-Boot bootloader only)"
+    echo "                                      kernel (builds Linux kernel only)"
     echo ""
-    echo "  -o, --override-branch          Script defaults to latest Poky branch."
-    echo "                                 Choose this option to override the"
-    echo "                                 default and select an older branch."
+    echo "  -o, --override-branch [image]     Override the default Yocto branch to select"
+    echo "                                    an older branch (optional).  Defaults to"
+    echo "                                    latest Yocto/Poky branch ($YOCTO_BRANCH)."
     echo ""
-    echo "  -h, --help                     Display this help message and exit."
+    echo "  -h, --help                        Display this help message and exit."
     echo ""
-    echo "  -v, --version                  Display script version info and exit."
+    echo "  -v, --version                     Display script version info and exit."
     echo ""
 }
 
@@ -396,6 +397,11 @@ if [ `whoami` = root ] ; then
 fi
 
 # check arguments
+if [ -z $1 ]; then
+    usage
+    exit 1
+fi
+
 while [ "$1" != "" ]; do
     case $1 in
         -v | --version)
