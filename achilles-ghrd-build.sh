@@ -47,8 +47,10 @@ QTS_VER=22.1
 
 if [ $OS_IS_WINDOWS -ne 0 ]; then
     QTS_TOOL_PATH=/mnt/c/intelFPGA_pro/$QTS_VER/quartus/bin64
+    QTS_CMD=quartus_sh.exe
 else
     QTS_TOOL_PATH=$HOME/intelFPGA_pro/$QTS_VER/quartus/bin
+    QTS_CMD=quartus_sh
 fi
 
 USER_DIR=0
@@ -136,11 +138,13 @@ git checkout ghrd-v$QTS_VER
 cp src/hdl/top/achilles_${SOM_VER}_ghrd_${GHRD_TYPE}.vhd src/hdl/achilles_ghrd.vhd
 
 {
-$QTS_TOOL_PATH/quartus_sh -t src/script/achilles_ghrd_build_flow.tcl $SOM_VER $GHRD_TYPE
+$QTS_TOOL_PATH/$QTS_CMD -t src/script/achilles_ghrd_build_flow.tcl $SOM_VER $GHRD_TYPE
 } 2>&1 | tee -a ${BUILD_DIR}-build.log
 
 # TODO: create_achilles_ghrd_project.tcl script is creating this other .qpf, need to fix in that script; manually remove for now
-rm achilles_${SOM_VER}_ghrd.qpf
+if [ -f achilles_${SOM_VER}_ghrd.qpf ]; then
+    rm achilles_${SOM_VER}_ghrd.qpf
+fi
 
 } # end launch_quartus
 
@@ -206,6 +210,7 @@ done
 # start a build time counter
 SECONDS=0
 
+# use default director if user specified directory not given
 if [ $USER_DIR -eq 0 ]; then
     BUILD_DIR=achilles-$SOM_VER-ghrd-$GHRD_TYPE-qpp_v$QTS_VER
 fi
