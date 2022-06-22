@@ -71,20 +71,23 @@ usage()
     echo "Achilles SOM GHRD build script"
     echo ""
     echo "Options:"
-    echo "  -s, --som [som version]        Valid SOM versions:"
+    echo "  -s, --som [som version]        Valid SOM versions (required):"
     echo "                                   turbo [default]"
     echo "                                   indus"
     echo "                                   lite"
     echo ""
-    echo "  -g, --ghrd [type]              Valid GHRD types:"
+    echo "  -g, --ghrd [type]              Valid GHRD types (required):"
     echo "                                   pr (partial reconfiguration example) [default]"
     echo "                                   std (standard, flat hierarchy example, no PR)"
     echo ""
     echo "  -d, --directory [dir name]     Build directory name (optional)."
     echo "                                 If not specified, a default directory name is used."
     echo ""
-    echo "  -t, --tool-path [dir name]     Quartus installation tool path (must specify full"
-    echo "                                 path to \"bin\" or \"bin64\" directory)."
+    echo "  -q, --quartus-ver [version]    Quartus version to use for build (optional)."
+    echo "                                 If not specified, defaults to v$QTS_VER."
+    echo ""
+    echo "  -t, --tool-path [dir name]     Quartus installation tool path (optional)."
+    echo "                                 Specify full path to \"bin\" or \"bin64\" directory."
     echo ""
     echo "  -h, --help                     Display this help message and exit."
     echo ""
@@ -159,6 +162,11 @@ if [ `whoami` = root ] ; then
 fi
 
 # check & validate arguments
+if [ -z $1 ]; then
+    usage
+    exit 1
+fi
+
 while [ "$1" != "" ]; do
     case $1 in
         -v | --version)
