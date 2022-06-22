@@ -86,7 +86,7 @@ usage()
     echo "  -q, --quartus-ver [version]    Quartus version to use for build (optional)."
     echo "                                 If not specified, defaults to v$QTS_VER."
     echo ""
-    echo "  -t, --tool-path [dir name]     Quartus installation tool path (optional)."
+    echo "  -t, --tool-path [dir name]     Quartus installation tool path (optional). Specify full"
     echo "                                 Specify full path to \"bin\" or \"bin64\" directory."
     echo ""
     echo "  -h, --help                     Display this help message and exit."
@@ -169,10 +169,6 @@ fi
 
 while [ "$1" != "" ]; do
     case $1 in
-        -v | --version)
-            echo "${SCRIPT_VERSION}"
-            exit
-        ;;
         -s | --som)
             shift
                 if [[ "$1" = "turbo" || "$1" = "indus" || "$1" = "lite" ]]; then
@@ -183,11 +179,6 @@ while [ "$1" != "" ]; do
                     echo ""
                     exit 1
                 fi
-        ;;
-        -d | --directory)
-            shift
-            BUILD_DIR=$1
-            USER_DIR=1
         ;;
         -g | --ghrd)
             shift
@@ -200,12 +191,28 @@ while [ "$1" != "" ]; do
                     exit 1
                 fi
         ;;
+        -d | --directory)
+            shift
+            BUILD_DIR=$1
+            USER_DIR=1
+        ;;
+        # TODO: add version number validation
+        -q | --quartus-ver)
+            shift
+            QTS_VER=$1
+            USER_DIR=1
+        ;;
         -t | --tool-path)
             shift
             QTS_TOOL_PATH=$1
+            USER_QTS_TOOL_PATH=1
         ;;
         -h | --help)
             usage
+            exit
+        ;;
+        -v | --version)
+            echo "${SCRIPT_VERSION}"
             exit
         ;;
         *)
