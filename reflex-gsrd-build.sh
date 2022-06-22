@@ -40,16 +40,9 @@
 OS_IS_WINDOWS=$(uname -a | grep -c Microsoft)
 LATEST_BRANCH=kirkstone
 
-# latest tested version of Quartus Prime Pro is v22.1
-# you may override the version here but results are not guaranteed
-# TODO: add version option to function below
+# latest tested version of Quartus Prime Pro
+# you may override, but results are not guaranteed
 QTS_VER=22.1
-
-if [ $OS_IS_WINDOWS -ne 0 ]; then
-    QTS_TOOL_PATH=/mnt/c/intelFPGA_pro/$QTS_VER/quartus/bin64
-else
-    QTS_TOOL_PATH=$HOME/intelFPGA_pro/$QTS_VER/quartus/bin
-fi
 
 BUILD_GHRD=0
 BUILD_YOCTO=0
@@ -63,6 +56,12 @@ warn_empty_selection() {
     whiptail \
         --title "/!\ WARNING /!\\" \
         --msgbox "Empty selection not allowed.  Please make a selection." 8 78
+}
+
+warn_unsupported_quartus() {
+    whiptail \
+        --title "/!\ WARNING /!\\" \
+        --msgbox "You are specifying an untested version of Quartus.  You may encounter build errors.  Support will not be provided." 10 78
 }
 
 script_intro() {
@@ -89,11 +88,11 @@ EOF
         --title "REFLEX CES GSRD Build Script" \
         --textbox script_intro.txt 20 80
 
-    get_board_name
-
     if [ -f script_intro.txt ]; then
         rm script_intro.txt
     fi
+
+    get_board_name
 }
 
 get_board_name() {
@@ -107,11 +106,15 @@ get_board_name() {
         "Achilles Turbo SOM" "" OFF 3>&1 1>&2 2>&3 \
     )
     exit_status=$?
-    if [ $exit_status -eq 0 ] && [ "$BOARD_SEL" = "" ]; then
-            warn_empty_selection
-            get_board_name
-    elif [ $exit_status -eq 1 ]; then  # <Back> button was pressed
+    if [ $exit_status -eq 1 ]; then  # <Back> button was pressed
         script_intro
+    elif [ $exit_status -eq 0 ] && [ "$BOARD_SEL" = "" ]; then
+        warn_empty_selection
+        get_board_name
+    elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
+        :
+    else
+        exit
     fi
 
     case $BOARD_SEL in
@@ -150,11 +153,15 @@ get_gsrd_build_tasks() {
     )
 
     exit_status=$?
-    if [ $exit_status -eq 0 ] && [ "$TASK_SEL" = "" ]; then
+    if [ $exit_status -eq 1 ]; then  # <Back> button was pressed
+        get_board_name
+    elif [ $exit_status -eq 0 ] && [ "$TASK_SEL" = "" ]; then
         warn_empty_selection
         get_gsrd_build_tasks
-    elif [ $exit_status -eq 1 ]; then
-        get_board_name
+    elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
+        :
+    else
+        exit
     fi
 
     # Read $TASK_SEL array to determine which tasks to enable
@@ -193,11 +200,15 @@ get_ghrd_type() {
     )
 
     exit_status=$?
-    if [ $exit_status -eq 0 ] && [ "$GHRD_TYPE_SEL" = "" ]; then
+    if [ $exit_status -eq 1 ]; then    # <Back> button was pressed
+        get_gsrd_build_tasks
+    elif [ $exit_status -eq 0 ] && [ "$GHRD_TYPE_SEL" = "" ]; then
         warn_empty_selection
         get_ghrd_type
-    elif [ $exit_status -eq 1 ]; then    # <Back> button was pressed
-        get_gsrd_build_tasks
+    elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
+        :
+    else
+        exit
     fi
 
     case $GHRD_TYPE_SEL in
@@ -213,14 +224,88 @@ get_ghrd_type() {
             exit 1
         ;;
     esac
-    
+
+    get_quartus_info
+}
+
+get_quartus_info() {
+    QTS_VER_SEL=$(whiptail \
+        --title "Quartus Version" \
+        --ok-button "Next" \
+        --cancel-button "Back" \
+        --radiolist "\nChoose Quartus Prime Pro version for GHRD build." 15 70 4 \
+        "22.1" "Latest tested and supported version" ON \
+        "21.3" "Minimal testing done" OFF \
+        "Other" "Manually enter the Quartus version (in next menu)." OFF 3>&1 1>&2 2>&3 \
+    )
+
+    exit_status=$?
+    if [ $exit_status -eq 1 ]; then    # <Back> button was pressed
+        get_ghrd_type
+    elif [ $exit_status -eq 0 ] && [ "$GHRD_TYPE_SEL" = "" ]; then
+        warn_empty_selection
+        get_quartus_info
+    elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
+        :
+    else
+        exit
+    fi
+
+    case $QTS_VER_SEL in
+        "22.1")
+            QTS_VER=22.1
+        ;;
+        "21.3")
+            QTS_VER=21.3
+        ;;
+        "Other")
+            warn_unsupported_quartus
+            QTS_VER=$(whiptail \
+                --title "Specify Quartus Version" \
+                --ok-button "Next" \
+                --cancel-button "Back" \
+                --inputbox "\nEnter the Quartus Prime Pro version to be used:" 10 60 3>&1 1>&2 2>&3 $QTS_VER \
+            )
+
+            exit_status=$?
+            if [ $exit_status -eq 1 ]; then    # <Back> button was pressed
+                get_quartus_info
+            elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
+                :
+            else
+                exit
+            fi
+        ;;
+        *)
+            exit 1
+        ;;
+    esac
+
+    if [ $OS_IS_WINDOWS -ne 0 ]; then
+        QTS_TOOL_PATH=/mnt/c/intelFPGA_pro/$QTS_VER/quartus/bin64
+    else
+        QTS_TOOL_PATH=$HOME/intelFPGA_pro/$QTS_VER/quartus/bin
+    fi
+
     # check for Quartus tools in the expected location
-    if [ ! -d $QTS_TOOL_PATH ]; then
+    while [ ! -d $QTS_TOOL_PATH ]
+    do
         QTS_TOOL_PATH=$(whiptail \
             --title "Quartus Tool Path" \
+            --ok-button "Next" \
+            --cancel-button "Back" \
             --inputbox "\nQuartus tools were not found in default installation path $QTS_TOOL_PATH.  Please enter the full path to your Quartus installation \"bin\" directory:" 12 60 3>&1 1>&2 2>&3 $QTS_TOOL_PATH \
         )
-    fi
+
+        exit_status=$?
+        if [ $exit_status -eq 1 ]; then    # <Back> button was pressed
+            get_quartus_info
+        elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
+            :
+        else
+            exit
+        fi
+    done
 
     if [ $BUILD_YOCTO -eq 1 ]; then 
         get_yocto_image
@@ -241,11 +326,15 @@ get_yocto_image() {
     )
 
     exit_status=$?
-    if [ $exit_status -eq 0 ] && [ "$YOCTO_IMG_SEL" = "" ]; then
+    if [ $exit_status -eq 1 ]; then    # <Back> button was pressed
+        get_gsrd_build_tasks
+    elif [ $exit_status -eq 0 ] && [ "$YOCTO_IMG_SEL" = "" ]; then
         warn_empty_selection
         get_yocto_image
-    elif [ $exit_status -eq 1 ]; then    # <Back> button was pressed
-        get_gsrd_build_tasks
+    elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
+        :
+    else
+        exit
     fi
 
     case $YOCTO_IMG_SEL in
@@ -281,11 +370,15 @@ get_branch() {
     )
 
     exit_status=$?
-    if [ $exit_status -eq 0 ] && [ "$BRANCH_SEL" = "" ]; then
+    if [ $exit_status -eq 1 ]; then    # <Back> button was pressed
+        get_yocto_image
+    elif [ $exit_status -eq 0 ] && [ "$BRANCH_SEL" = "" ]; then
         warn_empty_selection
         get_branch
-    elif [ $exit_status -eq 1 ]; then    # <Back> button was pressed
-        get_yocto_image
+    elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
+        :
+    else
+        exit
     fi
 
     case $BRANCH_SEL in
@@ -309,6 +402,7 @@ get_branch() {
 }
 
 review_selections() {
+    # build.config might be left over from previously canceled script run
     if [ -f build.config ]; then
         rm build.config
     fi
@@ -320,8 +414,8 @@ review_selections() {
     if [ $BUILD_GHRD -eq 1 ]; then
         echo "GHRD Options:" >> build.config
         echo "   GHRD type = $INFO_GHRD_TYPE" >> build.config
-        echo "   Quartus tool path = $QTS_TOOL_PATH" >> build.config
         echo "   Quartus Prime Pro version = $QTS_VER" >> build.config
+        echo "   Quartus tool path = $QTS_TOOL_PATH" >> build.config
         echo "" >> build.config
     fi
     
@@ -343,7 +437,11 @@ review_selections() {
     whiptail \
         --title "Confirm Selections" \
         --textbox build.config 30 78
-        
+
+    if [ -f build.config ]; then
+        rm build.config
+    fi
+
     whiptail \
         --title "Confirm Selections" \
         --yes-button "Start" \
@@ -353,11 +451,12 @@ review_selections() {
     exit_status=$?
     if [ $exit_status -eq 1 ]; then  # <Back> button was pressed
         get_board_name
+    elif [ $exit_status -eq 0 ]; then  # <Start> button was pressed
+        :
+    else
+        exit
     fi
 
-    if [ -f build.config ]; then
-        rm build.config
-    fi
 }
 
 #################################################
