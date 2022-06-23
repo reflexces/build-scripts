@@ -76,7 +76,7 @@ usage()
     echo "                                 If not specified, a default directory name is used."
     echo ""
     echo "  -q, --quartus-ver [version]    Quartus version to use for build (optional)."
-    echo "                                 If not specified, defaults to v$QTS_VER."
+    echo "                                 If not specified, defaults to v$SUPPORTED_QTS_VER."
     echo ""
     echo "  -t, --tool-path [dir name]     Quartus installation tool path (optional). Specify full"
     echo "                                 Specify full path to \"bin\" or \"bin64\" directory."
