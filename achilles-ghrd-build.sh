@@ -29,7 +29,6 @@
 # 2022.06
 #   - initial release for GSRD 2022.06 supporting Achilles SOMs
 
-
 # Color text formatting
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -40,26 +39,19 @@ NC='\033[0m' # No Color
 
 OS_IS_WINDOWS=$(uname -a | grep -c Microsoft)
 
-# latest tested version of Quartus Prime Pro is v22.1
-# you may override the version here but results are not guaranteed
-# TODO: add Quartus version option to script arguments
+# latest tested version of Quartus Prime Pro
+# override with -q option, but results are not guaranteed
 QTS_VER=22.1
-
-if [ $OS_IS_WINDOWS -ne 0 ]; then
-    QTS_TOOL_PATH=/mnt/c/intelFPGA_pro/$QTS_VER/quartus/bin64
-    QTS_CMD=quartus_sh.exe
-else
-    QTS_TOOL_PATH=$HOME/intelFPGA_pro/$QTS_VER/quartus/bin
-    QTS_CMD=quartus_sh
-fi
+SUPPORTED_QTS_VER=$QTS_VER
 
 USER_DIR=0
+USER_QTS_TOOL_PATH=0
 
 SCRIPT_VERSION=ghrd-v$QTS_VER
 
 # set this to 1 during development/test and specify local GHRD repo
 DEBUG=0
-DEBUG_REPO=~/work/github
+DEBUG_REPO=${HOME}/work/github
 
 #################################################
 # Functions
@@ -97,58 +89,80 @@ usage()
 
 clone_update_repos()
 {
+    repo[1]=achilles-hardware
 
-repo[1]=achilles-hardware
-
-# clean directory if it exists
-if [ -d "$BUILD_DIR" ]; then
-    rm -rf $BUILD_DIR
-    mkdir -p $BUILD_DIR
-else
-    mkdir -p $BUILD_DIR
-fi
-
-pushd $BUILD_DIR > /dev/null
-
-for i in {1..1}
-do
-    if [ ! -d "${repo[i]}" ]; then
-        echo "Cloning ${repo[i]} repository..."
-        if [ $DEBUG -eq 1 ]; then
-            git clone $DEBUG_REPO/${repo[i]}
-        else
-            git clone https://github.com/reflexces/${repo[i]}.git
-        fi
+    # clean directory if it exists
+    if [ -d "$BUILD_DIR" ]; then
+        rm -rf $BUILD_DIR
+        mkdir -p $BUILD_DIR
     else
-        pushd ${repo[i]} > /dev/null
-        echo "Fetching latest updates for ${repo[i]}..."
-        git pull
-        popd > /dev/null
+        mkdir -p $BUILD_DIR
     fi
-done
 
-popd > /dev/null
+    pushd $BUILD_DIR > /dev/null
 
+    for i in {1..1}
+    do
+        if [ ! -d "${repo[i]}" ]; then
+            echo "Cloning ${repo[i]} repository..."
+            if [ $DEBUG -eq 1 ]; then
+                git clone $DEBUG_REPO/${repo[i]}
+            else
+                git clone https://github.com/reflexces/${repo[i]}.git
+            fi
+        else
+            pushd ${repo[i]} > /dev/null
+            echo "Fetching latest updates for ${repo[i]}..."
+            git pull
+            popd > /dev/null
+        fi
+    done
+
+    popd > /dev/null
 } # end clone_update_repos
+
+check_quartus_tools()
+{
+    if [ $USER_QTS_TOOL_PATH -eq 0 ]; then
+        if [ $OS_IS_WINDOWS -ne 0 ]; then
+            QTS_TOOL_PATH=/mnt/c/intelFPGA_pro/$QTS_VER/quartus/bin64
+        else
+            QTS_TOOL_PATH=$HOME/intelFPGA_pro/$QTS_VER/quartus/bin
+        fi
+    fi
+
+    if [ $OS_IS_WINDOWS -ne 0 ]; then
+        QTS_CMD=quartus_sh.exe
+    else
+        QTS_CMD=quartus_sh
+    fi
+
+    while [ ! -d $QTS_TOOL_PATH ]
+    do
+        printf "Quartus tools were not found in default installation path $QTS_TOOL_PATH.  Please enter the full path to your Quartus installation \"bin\" directory.\n"
+        printf "Do not include / after bin."
+        read -i "$QTS_TOOL_PATH" -e QTS_TOOL_PATH
+        printf "Confirm Quartus version matches what is shown in Quartus installation path:"
+        read -i "$QTS_VER" -e QTS_VER
+    done
+}
 
 launch_quartus()
 {
+    pushd $BUILD_DIR/achilles-hardware > /dev/null
+    git checkout ghrd-v$SUPPORTED_QTS_VER
 
-pushd $BUILD_DIR/achilles-hardware > /dev/null
-git checkout ghrd-v$QTS_VER
+    # TODO: manually copy the correct top level VHDL file until the set_parameter feature in create_achilles_ghrd_project.tcl is tested
+    cp src/hdl/top/achilles_${SOM_VER}_ghrd_${GHRD_TYPE}.vhd src/hdl/achilles_ghrd.vhd
 
-# TODO: manually copy the correct top level VHDL file until the set_parameter feature in create_achilles_ghrd_project.tcl is tested
-cp src/hdl/top/achilles_${SOM_VER}_ghrd_${GHRD_TYPE}.vhd src/hdl/achilles_ghrd.vhd
+    {
+    $QTS_TOOL_PATH/$QTS_CMD -t src/script/achilles_ghrd_build_flow.tcl $SOM_VER $GHRD_TYPE
+    } 2>&1 | tee -a ${BUILD_DIR}-build.log
 
-{
-$QTS_TOOL_PATH/$QTS_CMD -t src/script/achilles_ghrd_build_flow.tcl $SOM_VER $GHRD_TYPE
-} 2>&1 | tee -a ${BUILD_DIR}-build.log
-
-# TODO: create_achilles_ghrd_project.tcl script is creating this other .qpf, need to fix in that script; manually remove for now
-if [ -f achilles_${SOM_VER}_ghrd.qpf ]; then
-    rm achilles_${SOM_VER}_ghrd.qpf
-fi
-
+    # TODO: create_achilles_ghrd_project.tcl script is creating this other .qpf, need to fix in that script; manually remove for now
+    if [ -f achilles_${SOM_VER}_ghrd.qpf ]; then
+        rm achilles_${SOM_VER}_ghrd.qpf
+    fi
 } # end launch_quartus
 
 #################################################
@@ -200,7 +214,6 @@ while [ "$1" != "" ]; do
         -q | --quartus-ver)
             shift
             QTS_VER=$1
-            USER_DIR=1
         ;;
         -t | --tool-path)
             shift
@@ -222,13 +235,15 @@ while [ "$1" != "" ]; do
     shift
 done
 
-# start a build time counter
-SECONDS=0
+check_quartus_tools
 
 # use default director if user specified directory not given
 if [ $USER_DIR -eq 0 ]; then
     BUILD_DIR=achilles-$SOM_VER-ghrd-$GHRD_TYPE-qpp_v$QTS_VER
 fi
+
+# start a build time counter
+SECONDS=0
 
 clone_update_repos
 
