@@ -47,6 +47,7 @@ QTS_VER=22.1
 BUILD_GHRD=0
 BUILD_YOCTO=0
 PROGRAM_MMC=0
+USER_QTS_VER=0
 
 #################################################
 # Functions
@@ -257,6 +258,7 @@ get_quartus_info() {
         ;;
         "21.3")
             QTS_VER=21.3
+            USER_QTS_VER=1
         ;;
         "Other")
             warn_unsupported_quartus
@@ -266,6 +268,8 @@ get_quartus_info() {
                 --cancel-button "Back" \
                 --inputbox "\nEnter the Quartus Prime Pro version to be used:" 10 60 3>&1 1>&2 2>&3 $QTS_VER \
             )
+
+            USER_QTS_VER=1
 
             exit_status=$?
             if [ $exit_status -eq 1 ]; then    # <Back> button was pressed
@@ -489,7 +493,12 @@ if [ $BUILD_GHRD -eq 1 ]; then
     if [ ! -f achilles-ghrd-build.sh ]; then
         wget https://raw.githubusercontent.com/reflexces/build-scripts/master/achilles-ghrd-build.sh
     fi
-    ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE -t $QTS_TOOL_PATH
+
+    if [ $USER_QTS_VER -eq 1 ]; then
+        ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE -q $QTS_VER-t $QTS_TOOL_PATH
+    else
+        ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE
+    fi
 fi
 
 if [ $BUILD_YOCTO -eq 1 ]; then 
