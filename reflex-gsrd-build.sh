@@ -495,7 +495,7 @@ if [ $BUILD_GHRD -eq 1 ]; then
     fi
 
     if [ $USER_QTS_VER -eq 1 ]; then
-        ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE -q $QTS_VER-t $QTS_TOOL_PATH
+        ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE -q $QTS_VER -t $QTS_TOOL_PATH
     else
         ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE
     fi
