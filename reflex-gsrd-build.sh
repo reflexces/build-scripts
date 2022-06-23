@@ -41,7 +41,7 @@ OS_IS_WINDOWS=$(uname -a | grep -c Microsoft)
 LATEST_BRANCH=kirkstone
 
 # latest tested version of Quartus Prime Pro
-# you may override, but results are not guaranteed
+# user is given option to choose different version, but results are not guaranteed
 QTS_VER=22.1
 
 BUILD_GHRD=0
