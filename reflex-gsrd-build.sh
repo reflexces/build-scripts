@@ -301,6 +301,8 @@ get_quartus_info() {
             --inputbox "\nQuartus tools were not found in default installation path $QTS_TOOL_PATH.  Please enter the full path to your Quartus installation \"bin\" directory:" 12 60 3>&1 1>&2 2>&3 $QTS_TOOL_PATH \
         )
 
+        USER_QTS_TOOL_PATH=1
+
         exit_status=$?
         if [ $exit_status -eq 1 ]; then    # <Back> button was pressed
             get_quartus_info
@@ -495,7 +497,7 @@ if [ $BUILD_GHRD -eq 1 ]; then
         chmod +x achilles-ghrd-build.sh
     fi
 
-    if [ $USER_QTS_VER -eq 1 ]; then
+    if [[ $USER_QTS_VER -eq 1 || $USER_QTS_TOOL_PATH -eq 1 ]]; then
         ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE -q $QTS_VER -t $QTS_TOOL_PATH
     else
         ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE
