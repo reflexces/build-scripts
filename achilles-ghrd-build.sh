@@ -37,7 +37,7 @@ BLUE='\033[1;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-OS_IS_WINDOWS=$(uname -a | grep -c Microsoft)
+OS_IS_WINDOWS=$(uname -a | grep -ic Microsoft)
 
 # latest tested version of Quartus Prime Pro
 # override with -q option, but results are not guaranteed
