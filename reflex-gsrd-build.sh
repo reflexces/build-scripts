@@ -492,6 +492,7 @@ export BUILD_GHRD=$BUILD_GHRD
 if [ $BUILD_GHRD -eq 1 ]; then
     if [ ! -f achilles-ghrd-build.sh ]; then
         wget https://raw.githubusercontent.com/reflexces/build-scripts/master/achilles-ghrd-build.sh
+        chmod +x achilles-ghrd-build.sh
     fi
 
     if [ $USER_QTS_VER -eq 1 ]; then
@@ -504,6 +505,7 @@ fi
 if [ $BUILD_YOCTO -eq 1 ]; then 
     if [ ! -f reflex-yocto-build ]; then
         wget https://raw.githubusercontent.com/reflexces/build-scripts/master/reflex-yocto-build
+        chmod +x reflex-yocto-build
     fi
 
     if [ $OVERRIDE_BRANCH -eq 1 ]; then
@@ -516,6 +518,7 @@ fi
 if [ $PROGRAM_MMC -eq 1 ]; then
     if [ ! -f program-emmc.sh ]; then
         wget https://raw.githubusercontent.com/reflexces/build-scripts/master/program-emmc.sh
+        chmod +x program-emmc.sh
     fi
     ./program-emmc.sh -b $BOARD -p full
 fi
