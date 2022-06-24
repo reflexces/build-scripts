@@ -37,7 +37,7 @@
 # Global variable initialization
 #################################################
 
-OS_IS_WINDOWS=$(uname -a | grep -c Microsoft)
+OS_IS_WINDOWS=$(uname -a | grep -ic Microsoft)
 LATEST_BRANCH=kirkstone
 
 # latest tested version of Quartus Prime Pro
