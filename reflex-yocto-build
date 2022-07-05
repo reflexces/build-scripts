@@ -60,6 +60,8 @@
 # Variables
 #################################################
 
+SOURCED_FROM_GSRD_SCRIPT=0
+
 # Script version variables
 YOCTO_REL=4.0.1
 YOCTO_BRANCH=kirkstone
@@ -404,6 +406,9 @@ fi
 
 while [ "$1" != "" ]; do
     case $1 in
+        -S)
+            SOURCED_FROM_GSRD_SCRIPT=1
+        ;;
         -v | --version)
             echo "${SCRIPT_VERSION}"
             exit
@@ -554,50 +559,44 @@ else
 fi
 #echo -e ${NC}
 
-# ensure that there is 1GB of free space in the rootfs image for user files
-# and add this variable to the bitbake variables whitelist
-# this is done now in the .wks file
-#export IMAGE_ROOTFS_EXTRA_SPACE="1048576"
-#export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE IMAGE_ROOTFS_EXTRA_SPACE"
+if [ SOURCED_FROM_GSRD_SCRIPT -eq 0 ]; then
+    # print introduction, ask for confirmation
+    echo -e ${GREEN}
+    printf "*******************************************************************\n"
+    printf " This is the Yocto v${YOCTO_REL} build script for the              \n"
+    printf " ${BOARD_LONG}                                                     \n"
+    printf " Current build configuration:                                      \n"
+    #printf " Run script with --help to view customizable perameters.           \n"
+    printf "  - GSRD release:           ${BLUE}${GSRD_REL}${GREEN}             \n"
+    printf "  - GHRD branch:            ${BLUE}${GHRD_BRANCH}${GREEN}          \n"
+    printf "  - U-Boot version:         ${BLUE}${UBOOT_VER}${GREEN}            \n"
+    printf "  - Kernel version:         ${BLUE}${KERNEL_VER}.nnn${GREEN}       \n"
+    printf "  - Distro version:         ${BLUE}yocto-poky-${YOCTO_BRANCH}${GREEN}\n"
+    printf "  - Build image:            ${BLUE}${BUILD_IMG}${GREEN}            \n"
+    printf "      disk space required:  ${BLUE}${IMG_SIZE} GiB${GREEN}         \n"
+    printf "  - top build directory:    ${BLUE}${BUILD_DIR}${GREEN}            \n"
+    printf "                                                                   \n"
+    printf " If this is your first time using the Yocto Project OpenEmbedded   \n"
+    printf " build system on this computer, it may be necessary to exit this   \n"
+    printf " script and first install some build tools and essential packages  \n"
+    printf " as documented in the Yocto Project Reference Manual v${YOCTO_REL}.  You\n"
+    printf " should run the ${NC}yocto-packages.sh${GREEN} script with root privileges as\n"
+    printf " instructed on the rocketboards.org page to check for and install  \n"
+    printf " any missing build tools and packages.                             \n"
+    printf "*******************************************************************\n"
+    echo -e ${NC}
 
-# print introduction, ask for confirmation
-echo -e ${GREEN}
-printf "*******************************************************************\n"
-printf " This is the Yocto v${YOCTO_REL} build script for the              \n"
-printf " ${BOARD_LONG}                                                     \n"
-printf " Current build configuration:                                      \n"
-#printf " Run script with --help to view customizable perameters.           \n"
-printf "  - GSRD release:           ${BLUE}${GSRD_REL}${GREEN}             \n"
-printf "  - GHRD branch:            ${BLUE}${GHRD_BRANCH}${GREEN}          \n"
-printf "  - U-Boot version:         ${BLUE}${UBOOT_VER}${GREEN}            \n"
-printf "  - Kernel version:         ${BLUE}${KERNEL_VER}.nnn${GREEN}       \n"
-printf "  - Distro version:         ${BLUE}yocto-poky-${YOCTO_BRANCH}${GREEN}\n"
-printf "  - Build image:            ${BLUE}${BUILD_IMG}${GREEN}            \n"
-printf "      disk space required:  ${BLUE}${IMG_SIZE} GiB${GREEN}         \n"
-printf "  - top build directory:    ${BLUE}${BUILD_DIR}${GREEN}            \n"
-printf "                                                                   \n"
-printf " If this is your first time using the Yocto Project OpenEmbedded   \n"
-printf " build system on this computer, it may be necessary to exit this   \n"   
-printf " script and first install some build tools and essential packages  \n"
-printf " as documented in the Yocto Project Reference Manual v${YOCTO_REL}.  You\n"
-printf " should run the ${NC}yocto-packages.sh${GREEN} script with root privileges as\n"
-printf " instructed on the rocketboards.org page to check for and install  \n"
-printf " any missing build tools and packages.                             \n"
-printf "*******************************************************************\n"
-echo -e ${NC}
-
-#echo -e ${WHITE}
-echo "Verify build configuration.  Exit and rerun script with --help to make changes."
-read -r -p "Continue? [y/N] " response
-case "$response" in
-    [yY][eE][sS]|[yY]) 
-        printf "\n"
-    ;;
-    *)
-        exit 1
-    ;;
-esac
-#echo -e ${NC}
+    echo "Verify build configuration.  Exit and rerun script with --help to make changes."
+    read -r -p "Continue? [y/N] " response
+    case "$response" in
+        [yY][eE][sS]|[yY])
+            printf "\n"
+        ;;
+        *)
+            exit 1
+        ;;
+    esac
+fi
 
 # create the BUILD_DIR and MACHINE build directories
 mkdir -p $BUILD_DIR
