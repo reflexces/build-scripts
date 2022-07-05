@@ -559,7 +559,7 @@ else
 fi
 #echo -e ${NC}
 
-if [ SOURCED_FROM_GSRD_SCRIPT -eq 0 ]; then
+if [ $SOURCED_FROM_GSRD_SCRIPT -eq 0 ]; then
     # print introduction, ask for confirmation
     echo -e ${GREEN}
     printf "*******************************************************************\n"
