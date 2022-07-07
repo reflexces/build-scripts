@@ -170,14 +170,13 @@ get_gsrd_build_tasks() {
     BUILD_YOCTO=$(echo $TASK_SEL | grep -c YOCTO)
     PROGRAM_MMC=$(echo $TASK_SEL | grep -c PROGRAM)
     
-    # check if user is running script in Windows/WSL and disable incompatible build tasks
+    # check if user is running script in Windows/WSL and disable incompatible build task
     if [ $OS_IS_WINDOWS -ne 0 ]; then
-        if [ $BUILD_YOCTO -eq 1 ] || [ $PROGRAM_MMC -eq 1 ]; then
+        if [ $BUILD_YOCTO -eq 1 ]; then
             BUILD_YOCTO=0
-            PROGRAM_MMC=0
             whiptail \
                 --title "/!\ WARNING /!\\" \
-                --msgbox "The YOCTO and PROGRAM functions are only available to run in a native Linux enviroment or Linux Virtual Machine.  They cannot run under Windows WSL.  Only the GHRD task will run." 10 78
+                --msgbox "The YOCTO build can only run in a native Linux enviroment or Linux Virtual Machine.  It cannot run under Windows WSL." 10 78
         fi
     fi
 
