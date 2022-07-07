@@ -390,6 +390,7 @@ get_branch() {
     case $BRANCH_SEL in
         "LATEST BRANCH")
             YOCTO_BRANCH=$LATEST_BRANCH
+            OVERRIDE_BRANCH=0
         ;;
         "HONISTER")
             YOCTO_BRANCH=honister
@@ -477,7 +478,6 @@ script_intro
 # if BUILD_GHRD is enabled, export this variable so the .rbf files generated from the GHRD
 # build are used instead of the precompiled .rbf files
 
-export BUILD_GHRD=$BUILD_GHRD
 # the 'if' statment below must be updated with each new Yocto branch released after kirkstone
 # the BB_ENV_EXTRAWHITE variable name changed at kirkstone branch; see here for more info:
 # https://docs.yoctoproject.org/migration-guides/migration-4.0.html?highlight=bb_env_extrawhite
@@ -511,9 +511,9 @@ if [ $BUILD_YOCTO -eq 1 ]; then
     fi
 
     if [ $OVERRIDE_BRANCH -eq 1 ]; then
-        ./reflex-yocto-build -b $BOARD -i $YOCTO_IMG -o $YOCTO_BRANCH
+        ./reflex-yocto-build -S -b $BOARD -i $YOCTO_IMG -o $YOCTO_BRANCH
     else
-        ./reflex-yocto-build -b $BOARD -i $YOCTO_IMG
+        ./reflex-yocto-build -S -b $BOARD -i $YOCTO_IMG
     fi
 fi
 
@@ -522,5 +522,22 @@ if [ $PROGRAM_MMC -eq 1 ]; then
         wget https://raw.githubusercontent.com/reflexces/build-scripts/master/program-emmc.sh
         chmod +x program-emmc.sh
     fi
-    ./program-emmc.sh -b $BOARD -p full
+
+    if [[ $BUILD_GHRD -eq 1 && $BUILD_YOCTO -eq 1 ]]; then
+        if [ $OVERRIDE_BRANCH -eq 1 ]; then
+            ./program-emmc.sh -S -q $QTS_VER -t $QTS_TOOL_PATH -b $BOARD -i $YOCTO_IMG -o $YOCTO_BRANCH
+        else
+            ./program-emmc.sh -S -q $QTS_VER -t $QTS_TOOL_PATH -b $BOARD -i $YOCTO_IMG
+        fi
+    elif [ $BUILD_GHRD -eq 1 ]; then
+        ./program-emmc.sh -S -q $QTS_VER -t $QTS_TOOL_PATH
+    elif [ $BUILD_YOCTO -eq 1 ]; then
+        if [ $OVERRIDE_BRANCH -eq 1 ]; then
+            ./program-emmc.sh -S -b $BOARD -i $YOCTO_IMG -o $YOCTO_BRANCH
+        else
+            ./program-emmc.sh -S -b $BOARD -i $YOCTO_IMG
+        fi
+    else
+        ./program-emmc.sh -S -b $BOARD
+    fi
 fi
