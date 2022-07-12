@@ -650,28 +650,45 @@ program_mmc() {
             
             whiptail \
                 --title "/!\ INFO /!\\" \
-                --msgbox "Ready to program $INFO_BOARD eMMC with WIC image: \n$IMAGE_NAME \nFollow prompts to continue. \nPassword for target ssh connection is 'root'" 0 0
+                --msgbox "Ready to program $INFO_BOARD eMMC with WIC image: \n$IMAGE_NAME" 0 0
 
             exit_status=$?
             if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
+                # remove $IP_ADDR from known_hosts, in case it exists
                 ssh-keygen -f "$HOME/.ssh/known_hosts" -R "$IP_ADDR" > /dev/null
-                pv -tpreb $IMAGE_PATH/$IMAGE_NAME | ssh root@${IP_ADDR} dd of=/dev/mmcblk0 && sync
+                # now add it back to skip connection prompt
+                ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts > /dev/null
+                pv -tpreb $IMAGE_PATH/$IMAGE_NAME | sshpass -p root ssh root@${IP_ADDR} dd of=/dev/mmcblk0 && sync
             else  # Esc key pressed
                 exit
             fi
         ;;
         "UPDATE U-BOOT")
-            whiptail \
-                --title "/!\ INFO /!\\" \
-                --msgbox "This feature is not yet available." 8 78
-            get_programming_task
             IMAGE_NAME=("u-boot-splx4.sfp" "u-boot.img")
             get_image_file_source "${IMAGE_NAME[@]}"
             get_quartus_info
             ${BOARD_FAM}_pgm_steps
             program_fpga_with_initramfs
-            #pv -tpreb $IMAGE_PATH/$IMAGE_NAME | ssh root@${IP_ADDR} dd of=/dev/mmcblk0p2 && sync
-            # P1 program command here for u-boot.img
+
+            whiptail \
+                --title "/!\ INFO /!\\" \
+                --msgbox "Ready to program $INFO_BOARD eMMC with U-Boot files: \n$IMAGE_NAME" 0 0
+
+            exit_status=$?
+            if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
+                # remove $IP_ADDR from known_hosts, in case it exists
+                ssh-keygen -f "$HOME/.ssh/known_hosts" -R "$IP_ADDR" > /dev/null
+                # now add it back to skip connection prompt
+                ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts
+                # TODO: adding /spl in path below is a hack; need to fix that in the get_image_file_source function
+                # dd .spl file to A2 raw partition 2
+                pv -tpreb $IMAGE_PATH/spl/${IMAGE_NAME[0]} | sshpass -p root ssh root@${IP_ADDR} dd of=/dev/mmcblk0p2 && sync
+                # scp .img file to FAT partition 1
+                sshpass -p root ssh root@${IP_ADDR} "mkdir -p /media/emmcp1;mount -t vfat /dev/mmcblk0p1 /media/emmcp1"
+                sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[1]} root@${IP_ADDR}:/media/emmcp1
+            else  # Esc key pressed
+                exit
+            fi
         ;;
         "UPDATE KERNEL")
             whiptail \
