@@ -34,7 +34,7 @@
 #   - initial release for GSRD 2022.06 supporting Achilles SOMs
 #   - TODO: add whiptail gauges for wget downloads, FPGA programming,
 #           and image copy to eMMC
-
+#set -x && trap read debug
 #################################################
 # Global variable initialization
 #################################################
@@ -411,7 +411,7 @@ get_image_file_source() {
                 else
                     whiptail \
                         --title "/!\ INFO /!\\" \
-                        --msgbox "Found $i from GHRD build." 8 78
+                        --msgbox "Found $i from GHRD build or previous search directory." 8 78
 
                     exit_status=$?
                     if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
@@ -557,7 +557,7 @@ program_fpga_with_initramfs() {
             --title "/!\ ERROR /!\\" \
             --yes-button "Retry" \
             --no-button "Exit" \
-            --yesno "FPGA configuration with factory initramfs image was not successful.  \nRemember to stop target board boot process at U-Boot before attempting FPGA configuration." 10 38
+            --yesno "FPGA configuration with factory initramfs image was not successful.  \nRemember to stop target board boot process at U-Boot before attempting FPGA configuration." 0 0
 
         exit_status=$?
         if [ $exit_status -eq 1 ]; then  # <Exit> button was pressed
@@ -616,8 +616,8 @@ get_ip_address() {
 
         exit_status=$?
         if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
-            #:
-            return
+            :
+            #return
         else  # Esc key pressed
             exit
         fi
@@ -703,12 +703,29 @@ program_mmc() {
             # P1 program command here
         ;;
         "UPDATE FPGA")
-            whiptail \
-                --title "/!\ INFO /!\\" \
-                --msgbox "This feature is not yet available." 8 78
-            get_programming_task
             IMAGE_NAME=("fit_spl_fpga_periph_only.itb" "fit_spl_fpga.itb")
             get_image_file_source "${IMAGE_NAME[@]}"
+            get_quartus_info
+            ${BOARD_FAM}_pgm_steps
+            program_fpga_with_initramfs
+
+            whiptail \
+                --title "/!\ INFO /!\\" \
+                --msgbox "Ready to program $INFO_BOARD eMMC with ITB files: \n$IMAGE_NAME" 0 0
+
+            exit_status=$?
+            if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
+                # remove $IP_ADDR from known_hosts, in case it exists
+                ssh-keygen -f "$HOME/.ssh/known_hosts" -R "$IP_ADDR" > /dev/null
+                # now add it back to skip connection prompt
+                ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts
+                # scp .itb files to FAT partition 1
+                sshpass -p root ssh root@${IP_ADDR} "mkdir -p /media/emmcp1;mount -t vfat /dev/mmcblk0p1 /media/emmcp1"
+                sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[0]} root@${IP_ADDR}:/media/emmcp1
+                sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[1]} root@${IP_ADDR}:/media/emmcp1
+            else  # Esc key pressed
+                exit
+            fi
         ;;
         "P1")
             whiptail \
