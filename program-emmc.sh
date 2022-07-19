@@ -362,10 +362,10 @@ get_image_file_source() {
             pushd $IMAGE_PATH > /dev/null
 
             # special cases: each SOM must have a tar.gz file on github release page to hold files with generic, non board-specific names
-            if [ $BOARD_FAM == "achilles" ]; then
-                if [ $PGM_TASK_SEL == "UPDATE U-BOOT" ]; then
+            if [ "$BOARD_FAM" = "achilles" ]; then
+                if [ "$PGM_TASK_SEL" = "UPDATE U-BOOT" ]; then
                     RELEASE_ARCHIVE=${BOARD}-u-boot.tar.gz
-                elif [ $PGM_TASK_SEL == "UPDATE FPGA" ]; then
+                elif [ "$PGM_TASK_SEL" = "UPDATE FPGA" ]; then
                     RELEASE_ARCHIVE=${BOARD}-fit-itb.tar.gz
                 fi
             fi
@@ -388,6 +388,9 @@ get_image_file_source() {
                     fi
                 else
                     tar xzf $RELEASE_ARCHIVE
+                    whiptail \
+                        --title "/!\ INFO /!\\" \
+                        --msgbox "Download of $RELEASE_ARCHIVE and file extraction successful." 8 78
                 fi
             fi
 
