@@ -34,11 +34,12 @@
 #   - initial release for GSRD 2022.06 supporting Achilles SOMs
 #   - TODO: add whiptail gauges for wget downloads, FPGA programming,
 #           and image copy to eMMC
-#set -x && trap read debug
+
 #################################################
 # Global variable initialization
 #################################################
 
+SCRIPT_DIR=$(pwd)
 OS_IS_WINDOWS=$(uname -a | grep -ic Microsoft)
 
 # latest tested version of Quartus Prime Pro
@@ -194,7 +195,6 @@ file_browser()
 # $1 = valid file name; use "*" to allow any file
 # $2 = start folder
 
-    script_dir=$(pwd)
     cd "$2"
     dir_list=$(ls -lhp  | awk -F ' ' ' { print $9 " " $5 } ')
     curdir=$(pwd)
@@ -230,7 +230,6 @@ file_browser()
                 ); then
                     BROWSE_FILE_NAME="$selection"
                     BROWSE_FILE_PATH="$curdir"    # Return full file path and file name as selection variables
-                    cd "$script_dir"  # upon successful exit, go back to dir where this script is running from
                 else
                     file_browser "$1" "$curdir"
                 fi
@@ -248,6 +247,7 @@ file_browser()
             file_browser "$1" "$curdir"
        fi
     fi
+    cd "$SCRIPT_DIR"
 }
 
 get_board_name() {
@@ -354,12 +354,43 @@ get_image_file_source() {
 
     case $IMAGE_SRC in
         "PRECOMPILED")
-            IMAGE_PATH=${BOARD}-image-files
+            IMAGE_PATH=$SCRIPT_DIR/download
             if [ ! -d "$IMAGE_PATH" ]; then
                 mkdir -p $IMAGE_PATH
             fi
 
             pushd $IMAGE_PATH > /dev/null
+
+            # special cases: each SOM must have a tar.gz file on github release page to hold files with generic, non board-specific names
+            if [ $BOARD_FAM == "achilles" ]; then
+                if [ $PGM_TASK_SEL == "UPDATE U-BOOT" ]; then
+                    RELEASE_ARCHIVE=${BOARD}-u-boot.tar.gz
+                elif [ $PGM_TASK_SEL == "UPDATE FPGA" ]; then
+                    RELEASE_ARCHIVE=${BOARD}-fit-itb.tar.gz
+                fi
+            fi
+
+            if [ ! -f $RELEASE_ARCHIVE ]; then
+                if ! wget $LATEST_RELEASE_URL/$RELEASE_ARCHIVE; then
+#                if ! wget $LATEST_RELEASE_URL/$RELEASE_ARCHIVE | whiptail --gauge "Downloading $RELEASE_ARCHIVE" 6 50 0; then
+                    whiptail \
+                        --title "/!\ ERROR /!\\" \
+                        --yes-button "Retry" \
+                        --no-button "Exit" \
+                        --yesno "$RELEASE_ARCHIVE not found at $LATEST_RELEASE_URL" 8 78
+
+                    exit_status=$?
+                    if [ $exit_status -eq 1 ]; then  # <Exit> button was pressed
+                        exit
+                    elif [ $exit_status -eq 0 ]; then  # <Retry> button was pressed
+                        popd > /dev/null
+                        get_image_file_source "${IMAGE_NAME[@]}"
+                    fi
+                else
+                    tar xzf $RELEASE_ARCHIVE
+                fi
+            fi
+
             for i in "${src_file_array[@]}"
             do
                 if [ ! -f "$i" ]; then
@@ -390,36 +421,39 @@ get_image_file_source() {
             popd > /dev/null
         ;;
         "BUILD")
-            IMAGE_PATH=./${BOARD}-yocto-poky-$YOCTO_BRANCH/${BOARD}-build-files/tmp/deploy/images/${BOARD}
+            IMAGE_PATH=("./${BOARD}-yocto-poky-$YOCTO_BRANCH/${BOARD}-build-files/tmp/deploy/images/${BOARD}")
 
-            for i in "${src_file_array[@]}"
+            for i in "${!src_file_array[@]}"
             do
-                if [ ! -f "${IMAGE_PATH}/$i" ]; then
-                    whiptail \
-                        --title "/!\ WARNING /!\\" \
-                        --msgbox "File $i not found in expected location.  Press Enter to browse for file." 8 78
+                for j in "${src_file_array[$i]}"
+                do
+                    if [ ! -f "${IMAGE_PATH}/$j" ]; then
+                        whiptail \
+                            --title "/!\ WARNING /!\\" \
+                            --msgbox "File $j not found in expected location.  Press Enter to browse for file." 8 78
 
-                    exit_status=$?
-                    if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
-                        file_browser "$i" "$PWD"
-                        IMAGE_PATH=$BROWSE_FILE_PATH
-                        # TODO: to support user selected * files for P1 and P3, we need to read back the
-                        # selected files from BROWSE_FILE_NAME and write them into array IMAGE_NAME
-                    else  # Esc key pressed
-                        exit
-                    fi
-                else
-                    whiptail \
-                        --title "/!\ INFO /!\\" \
-                        --msgbox "Found $i from GHRD build or previous search directory." 8 78
+                        exit_status=$?
+                        if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
+                            file_browser "$j" "$PWD"
+                            IMAGE_PATH[$i]="$BROWSE_FILE_PATH"
+                            # TODO: to support user selected * files for P1 and P3, we need to read back the
+                            # selected files from BROWSE_FILE_NAME and write them into array IMAGE_NAME
+                        else  # Esc key pressed
+                            exit
+                        fi
+                    else
+                        whiptail \
+                            --title "/!\ INFO /!\\" \
+                            --msgbox "Found $j from GHRD build or previous search directory." 8 78
 
-                    exit_status=$?
-                    if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
-                        :
-                    else  # Esc key pressed
-                        exit
+                        exit_status=$?
+                        if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
+                            :
+                        else  # Esc key pressed
+                            exit
+                        fi
                     fi
-                fi
+                done
             done
         ;;
         *)
@@ -497,11 +531,14 @@ program_fpga_with_initramfs() {
             exit
         fi
     else
-        if [ ! -f $SOF_FILE ]; then
+        if [ ! -f $SCRIPT_DIR/download/$SOF_FILE ]; then
             whiptail \
                 --title "/!\ INFO /!\\" \
                 --msgbox "Ready to download $SOF_FILE ..." 8 78
-                
+
+            mkdir -p $SCRIPT_DIR/download > /dev/null
+            pushd $SCRIPT_DIR/download > /dev/null
+
             exit_status=$?
             if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
                 :
@@ -516,6 +553,7 @@ program_fpga_with_initramfs() {
                     --no-button "Exit" \
                     --yesno "$SOF_FILE not found at $PROG_FILES_URL." 8 78
 
+                popd > /dev/null
                 exit_status=$?
                 if [ $exit_status -eq 1 ]; then  # <Exit> button was pressed
                     exit
@@ -529,7 +567,9 @@ program_fpga_with_initramfs() {
                 whiptail \
                     --title "/!\ INFO /!\\" \
                     --msgbox "Download of $SOF_FILE successful." 8 78
-                    
+
+                popd > /dev/null
+
                 exit_status=$?
                 if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
                     :
@@ -545,7 +585,7 @@ program_fpga_with_initramfs() {
 
         exit_status=$?
         if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
-            PGM_SUCCESS=$($QTS_TOOL_PATH/$QTS_PGM_CMD -c "$JTAG_BOARD_ID" -m jtag -o "p;$SOF_FILE" | grep -c "Configuration succeeded")
+            PGM_SUCCESS=$($QTS_TOOL_PATH/$QTS_PGM_CMD -c "$JTAG_BOARD_ID" -m jtag -o "p;$SCRIPT_DIR/download/$SOF_FILE" | grep -c "Configuration succeeded")
         else  # Esc key pressed
             exit
         fi
@@ -657,8 +697,9 @@ program_mmc() {
                 # remove $IP_ADDR from known_hosts, in case it exists
                 ssh-keygen -f "$HOME/.ssh/known_hosts" -R "$IP_ADDR" > /dev/null
                 # now add it back to skip connection prompt
-                ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts > /dev/null
-                pv -tpreb $IMAGE_PATH/$IMAGE_NAME | sshpass -p root ssh root@${IP_ADDR} dd of=/dev/mmcblk0 && sync
+                ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts
+                pv -tpreb $IMAGE_PATH/${IMAGE_NAME[0]} | sshpass -p root ssh root@${IP_ADDR} dd of=/dev/mmcblk0 && sync
+                print_pgm_status "${IMAGE_NAME[0]}"
             else  # Esc key pressed
                 exit
             fi
@@ -682,10 +723,14 @@ program_mmc() {
                 ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts
                 # TODO: adding /spl in path below is a hack; need to fix that in the get_image_file_source function
                 # dd .spl file to A2 raw partition 2
-                pv -tpreb $IMAGE_PATH/spl/${IMAGE_NAME[0]} | sshpass -p root ssh root@${IP_ADDR} dd of=/dev/mmcblk0p2 && sync
+                
+#                pv -tpreb $IMAGE_PATH/spl/${IMAGE_NAME[0]} | sshpass -p root ssh root@${IP_ADDR} dd of=/dev/mmcblk0p2 && sync
+                pv -tpreb ${IMAGE_PATH[0]}/${IMAGE_NAME[0]} | sshpass -p root ssh root@${IP_ADDR} dd of=/dev/mmcblk0p2 && sync
+                print_pgm_status "${IMAGE_NAME[0]}"
                 # scp .img file to FAT partition 1
-                sshpass -p root ssh root@${IP_ADDR} "mkdir -p /media/emmcp1;mount -t vfat /dev/mmcblk0p1 /media/emmcp1"
-                sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[1]} root@${IP_ADDR}:/media/emmcp1
+                sshpass -p root ssh root@${IP_ADDR} "mkdir -p /media/emmcp1;mount -t vfat /dev/mmcblk0p1 /media/emmcp1" && \
+                sshpass -p root scp ${IMAGE_PATH[1]}/${IMAGE_NAME[1]} root@${IP_ADDR}:/media/emmcp1
+                print_pgm_status "${IMAGE_NAME[1]}"
             else  # Esc key pressed
                 exit
             fi
@@ -720,9 +765,11 @@ program_mmc() {
                 # now add it back to skip connection prompt
                 ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts
                 # scp .itb files to FAT partition 1
-                sshpass -p root ssh root@${IP_ADDR} "mkdir -p /media/emmcp1;mount -t vfat /dev/mmcblk0p1 /media/emmcp1"
+                sshpass -p root ssh root@${IP_ADDR} "mkdir -p /media/emmcp1;mount -t vfat /dev/mmcblk0p1 /media/emmcp1" && \
                 sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[0]} root@${IP_ADDR}:/media/emmcp1
+                print_pgm_status "${IMAGE_NAME[0]}"
                 sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[1]} root@${IP_ADDR}:/media/emmcp1
+                print_pgm_status "${IMAGE_NAME[1]}"
             else  # Esc key pressed
                 exit
             fi
@@ -753,6 +800,52 @@ program_mmc() {
         ;;
         *)
             exit 1
+        ;;
+    esac
+}
+
+remove_downloads() {
+    if [ -d $SCRIPT_DIR/download ]; then
+        whiptail \
+            --title "Remove Downloaded Files" \
+            --yesno "Do you want to remove any downloaded programming and image files?  \nYou can choose <No> if you are programming multiple boards." 0 0
+
+        exit_status=$?
+        if [ $exit_status -eq 0 ]; then  # <Yes> button was pressed
+                rm -R $SCRIPT_DIR/download
+        fi
+    fi
+}
+
+print_pgm_status() {
+    pgm_file=$1
+    case $PGM_TASK_SEL in
+        "FULL")
+            # check bash PIPESTATUS to make sure dd through pv completed successfully
+            # don't put any other commands before this since this variable must be checked
+            # immediately after pv command
+            if [ $PIPESTATUS -eq 0 ]; then
+                whiptail \
+                    --title "/!\ INFO /!\\" \
+                    --msgbox "Programming $pgm_file was successful." 0 0
+            else
+                whiptail \
+                    --title "/!\ ERROR /!\\" \
+                    --msgbox "Programming $pgm_file failed.  Please exit and try again." 0 0
+                    exit
+            fi
+        ;;
+        *)
+            if [ $? -eq 0 ]; then
+                whiptail \
+                    --title "/!\ INFO /!\\" \
+                    --msgbox "Programming $pgm_file was successful." 0 0
+            else
+                whiptail \
+                    --title "/!\ ERROR /!\\" \
+                    --msgbox "Programming $pgm_file failed.  Please exit and try again." 0 0
+                    exit
+            fi
         ;;
     esac
 }
@@ -803,14 +896,9 @@ while [ "$1" != "" ]; do
 done
 
 script_intro
+remove_downloads
 
-# check bash PIPESTATUS to make sure dd through pv completed successfully
-if [ $PIPESTATUS -eq 0 ]; then
-    whiptail \
-        --title "Programming Complete" \
-        --msgbox "Power cycle board to continue.  This script will now exit." 0 0
-else
-    whiptail \
-        --title "/!\ ERROR /!\\" \
-        --msgbox "There was a problem during programming.  Please exit and try again." 0 0
-fi
+whiptail \
+    --title "/!\ INFO /!\\" \
+    --msgbox "\nPower cycle board to continue.  This script will now exit." 0 0
+exit
