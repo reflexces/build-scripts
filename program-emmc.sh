@@ -721,10 +721,7 @@ program_mmc() {
                 ssh-keygen -f "$HOME/.ssh/known_hosts" -R "$IP_ADDR" > /dev/null
                 # now add it back to skip connection prompt
                 ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts
-                # TODO: adding /spl in path below is a hack; need to fix that in the get_image_file_source function
-                # dd .spl file to A2 raw partition 2
-                
-#                pv -tpreb $IMAGE_PATH/spl/${IMAGE_NAME[0]} | sshpass -p root ssh root@${IP_ADDR} dd of=/dev/mmcblk0p2 && sync
+
                 pv -tpreb ${IMAGE_PATH[0]}/${IMAGE_NAME[0]} | sshpass -p root ssh root@${IP_ADDR} dd of=/dev/mmcblk0p2 && sync
                 print_pgm_status "${IMAGE_NAME[0]}"
                 # scp .img file to FAT partition 1
@@ -736,16 +733,30 @@ program_mmc() {
             fi
         ;;
         "UPDATE KERNEL")
-            whiptail \
-                --title "/!\ INFO /!\\" \
-                --msgbox "This feature is not yet available." 8 78
-            get_programming_task
             IMAGE_NAME=("zImage" "socfpga_arria10_${BOARD_FAM}.dtb")
             get_image_file_source "${IMAGE_NAME[@]}"
             get_quartus_info
             ${BOARD_FAM}_pgm_steps
             program_fpga_with_initramfs
-            # P1 program command here
+            whiptail \
+                --title "/!\ INFO /!\\" \
+                --msgbox "Ready to program $INFO_BOARD eMMC with U-Boot files: \n$IMAGE_NAME" 0 0
+
+            exit_status=$?
+            if [ $exit_status -eq 0 ]; then  # <Ok> button was pressed
+                # remove $IP_ADDR from known_hosts, in case it exists
+                ssh-keygen -f "$HOME/.ssh/known_hosts" -R "$IP_ADDR" > /dev/null
+                # now add it back to skip connection prompt
+                ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts
+
+                sshpass -p root ssh root@${IP_ADDR} "mkdir -p /media/emmcp1;mount -t vfat /dev/mmcblk0p1 /media/emmcp1" && \
+                sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[0]} root@${IP_ADDR}:/media/emmcp1
+                print_pgm_status "${IMAGE_NAME[0]}"
+                sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[1]} root@${IP_ADDR}:/media/emmcp1
+                print_pgm_status "${IMAGE_NAME[1]}"
+            else  # Esc key pressed
+                exit
+            fi
         ;;
         "UPDATE FPGA")
             IMAGE_NAME=("fit_spl_fpga_periph_only.itb" "fit_spl_fpga.itb")
