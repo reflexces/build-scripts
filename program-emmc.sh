@@ -750,9 +750,9 @@ program_mmc() {
                 ssh-keyscan -H $IP_ADDR >> $HOME/.ssh/known_hosts
 
                 sshpass -p root ssh root@${IP_ADDR} "mkdir -p /media/emmcp1;mount -t vfat /dev/mmcblk0p1 /media/emmcp1" && \
-                sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[0]} root@${IP_ADDR}:/media/emmcp1
+                sshpass -p root scp ${IMAGE_PATH[0]}/${IMAGE_NAME[0]} root@${IP_ADDR}:/media/emmcp1
                 print_pgm_status "${IMAGE_NAME[0]}"
-                sshpass -p root scp $IMAGE_PATH/${IMAGE_NAME[1]} root@${IP_ADDR}:/media/emmcp1
+                sshpass -p root scp ${IMAGE_PATH[1]}/${IMAGE_NAME[1]} root@${IP_ADDR}:/media/emmcp1
                 print_pgm_status "${IMAGE_NAME[1]}"
             else  # Esc key pressed
                 exit
