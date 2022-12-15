@@ -533,7 +533,7 @@ case $BUILD_IMG in
         exit 1
 esac
 
-if [ $USER_DIR -eq 0 ]; then
+if [ "${USER_DIR:-0}" -eq 0 ]; then
    BUILD_DIR=${BOARD}-yocto-poky-$YOCTO_BRANCH
 fi
 
@@ -559,7 +559,7 @@ else
 fi
 #echo -e ${NC}
 
-if [ $SOURCED_FROM_GSRD_SCRIPT -eq 0 ]; then
+if [ "${SOURCED_FROM_GSRD_SCRIPT:-0}" -eq 0 ]; then
     # print introduction, ask for confirmation
     echo -e ${GREEN}
     printf "*******************************************************************\n"
