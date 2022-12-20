@@ -47,7 +47,9 @@
 #   - updated to support all 3 Achilles SOM versions
 #   - added a branch override option to support older Yocto branches, since older builds
 #     fail due to updates to master branch of meta-intel-fpga layer
-#   
+#
+# 2022.12
+#   - Use meta-intel-fpga layer branchs instead of master
 #
 # TODO: add dependecy checking to this sript (currently in yocto-packages.sh because the installation
 #       of packages, if necessary, requires root privileges); this script cannot run as root
@@ -218,18 +220,15 @@ check_git_config()
 
 # ------------------------------------------------------------------
 # function name: fetch_or_update_layers
-# function usage: fetch_or_update_layers "layer name" "source URL"
+# function usage: fetch_or_update_layers "layer name" "source URL" "git branch name"
 # function description: download layers required for build;
 #    if layer exists, get latest updates
-#
-# TODO: fix updating of meta-achilles; not pulling updates from
-# branches other than master; use git pull origin $YOCTO_BRANCH
-# instead if it exists?
 # ------------------------------------------------------------------
 
 fetch_or_update_layers() {
     meta_layer=$1
     source_url=$2
+    git_branch=$3
     pushd $BUILD_DIR > /dev/null
     pushd layers > /dev/null
 
@@ -242,14 +241,10 @@ fetch_or_update_layers() {
         
         pushd $meta_layer > /dev/null
 
-        if [ $meta_layer = meta-intel-fpga ] && [ $OVERRIDE_BRANCH -eq 0 ]; then
-            git checkout master
-        else
-            git checkout $YOCTO_BRANCH
-        fi
+        git checkout $git_branch
+        git pull --no-stat origin $git_branch
 
-        git pull
-        popd > /dev/null        
+        popd > /dev/null
     else
         echo -e ${GREEN}
         echo "*******************************************************************"
@@ -260,11 +255,7 @@ fetch_or_update_layers() {
         git clone $source_url
         pushd $meta_layer
 
-        if [ $meta_layer = meta-intel-fpga ] && [ $OVERRIDE_BRANCH -eq 0 ]; then
-            git checkout master
-        else
-            git checkout $YOCTO_BRANCH
-        fi
+        git checkout $git_branch
 
         popd > /dev/null
     fi
@@ -608,11 +599,11 @@ mkdir -p $BUILD_DIR/$BOARD-build-files
 SECONDS=0
 
 # additional layers required for your build should be added here
-fetch_or_update_layers poky https://git.yoctoproject.org/git/poky.git
-fetch_or_update_layers meta-intel-fpga https://git.yoctoproject.org/git/meta-intel-fpga
-fetch_or_update_layers meta-openembedded https://git.openembedded.org/meta-openembedded
-fetch_or_update_layers meta-achilles https://github.com/reflexces/meta-achilles.git
+fetch_or_update_layers poky https://git.yoctoproject.org/git/poky $YOCTO_BRANCH
+fetch_or_update_layers meta-intel-fpga https://git.yoctoproject.org/git/meta-intel-fpga $YOCTO_BRANCH
+fetch_or_update_layers meta-openembedded https://git.openembedded.org/meta-openembedded $YOCTO_BRANCH
+fetch_or_update_layers meta-achilles https://github.com/reflexces/meta-achilles $YOCTO_BRANCH
 # use next line for testing only; comment out line above
-#fetch_or_update_layers meta-achilles /home/dan/work/github/meta-achilles.git
+#fetch_or_update_layers meta-achilles ~/work/github/meta-achilles.git
 
 build_all
