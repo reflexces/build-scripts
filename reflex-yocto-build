@@ -290,7 +290,7 @@ build_all() {
     echo "*******************************************************************"
     echo -e ${NC}
 
-    source layers/poky/oe-init-build-env ./$BOARD-build-files/
+    source layers/poky/oe-init-build-env ./$BOARD_BASE-build-files/
 
 
     # Settings for local.conf
@@ -332,7 +332,7 @@ build_all() {
 
     if bitbake $BUILD_IMG ; then
         # copy the WIC image to an image directory
-        cp -L tmp/deploy/images/$BOARD/$BUILD_IMG-$BOARD.wic ../$BOARD-emmc-image
+        cp -L tmp/deploy/images/$BOARD/$BUILD_IMG-$BOARD.wic ../$BOARD_BASE-emmc-image
         
         # display elapsed build time for successful build
         ELAPSED="$(($SECONDS / 3600)) hrs $((($SECONDS / 60) % 60)) min $(($SECONDS % 60)) sec"
@@ -343,7 +343,7 @@ build_all() {
         printf " on ${NC}$(date -d "today" +"%m-%d-%Y %H:%M")${GREEN}\n"
         printf "\n"
         printf " The eMMC WIC image has been copied to the following directory:\n"
-        printf " ${BLUE}${PWD}/${BOARD}-emmc-image${GREEN}\n"
+        printf " ${BLUE}${PWD}/../${BOARD_BASE}-emmc-image${GREEN}\n"
         printf "\n"
         printf " All build output files can be found in the following directory:\n"
         printf " ${BLUE}${PWD}/tmp/deploy/images/${BOARD}${GREEN}\n"
@@ -519,7 +519,7 @@ case $BUILD_IMG in
 esac
 
 if [ "${USER_DIR:-0}" -eq 0 ]; then
-   BUILD_DIR=${BOARD}-yocto-poky-$YOCTO_BRANCH
+   BUILD_DIR=${BOARD_BASE:?}-yocto-poky-$YOCTO_BRANCH
 fi
 
 # if BUILD_DIR exists, skip checking disk space because this could be
@@ -585,9 +585,9 @@ fi
 
 # create the BUILD_DIR and MACHINE build directories
 mkdir -p $BUILD_DIR
-mkdir -p $BUILD_DIR/$BOARD-emmc-image
+mkdir -p $BUILD_DIR/$BOARD_BASE-emmc-image
 mkdir -p $BUILD_DIR/layers
-mkdir -p $BUILD_DIR/$BOARD-build-files
+mkdir -p $BUILD_DIR/$BOARD_BASE-build-files
 
 # start a build time counter
 SECONDS=0
