@@ -72,10 +72,7 @@ SCRIPT_VERSION="Yocto ${YOCTO_BRANCH} Build Script"
 
 # Other configuration variables
 # set a default board for the build, can be changed with -b option
-#BOARD=achilles-turbo
-#MACHINE=$BOARD
 BOARD_LONG="not specified"
-#BUILD_DIR=${BOARD}-yocto-poky-$YOCTO_BRANCH
 USER_DIR=0
 GSRD_REL=2022.06
 GHRD_BRANCH=ghrd-v22.1
@@ -115,8 +112,7 @@ usage()
     echo "                                    ${BUILD_DIR}"
     echo ""
     echo "  -i, --image [image]               Yocto image type to build (required).  Only these images names are valid:"
-#   echo "                                      xfce (XFCE graphical desktop, default if image not specified)"
-    echo "                                      console (console applications only)"
+    echo "                                      console (console applications only, default if image not specified)"
     echo "                                      u-boot (builds U-Boot bootloader only)"
     echo "                                      kernel (builds Linux kernel only)"
     echo ""
@@ -348,7 +344,7 @@ build_all() {
         printf " All build output files can be found in the following directory:\n"
         printf " ${BLUE}${PWD}/tmp/deploy/images/${BOARD}${GREEN}\n"
         printf "\n"
-        printf " If you built a full image (console or XFCE), you can now copy\n"
+        printf " If you built a full image (console), you can now copy\n"
         printf " the eMMC image file to the board's eMMC device.  Refer to the\n"
         printf " rocketboards.org board article for programming instructions.\n"
         printf "*******************************************************************\n"
@@ -484,17 +480,10 @@ esac
 #  - uboot                      = 10,949,536,237 (10.2 GiB)
 #  - kernel                     = 13,080,589,500 (12.2 GiB)
 #  - achilles-console-image     = 60,886,474,323 (56.7 GiB)
-#  - achilles-xfce-image        = TBD (?? GiB)
 # these actual image sizes will likely not be updated in new
 # releases of the script as this was more of an acedemic exercise
 
 case $BUILD_IMG in
-# XCFE image not yet supported
-#    xfce)
-#        BUILD_IMG=$BOARD-xfce-image
-##        IMG_SIZE=75
-#        IMG_SIZE=45
-#     ;;
     console)
         BUILD_IMG=$BOARD_BASE-console-image
         IMG_SIZE=58
