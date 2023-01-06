@@ -101,7 +101,15 @@ check_package ()
                 install_package $1
             fi
         ;;
-        "Fedora" | "CentOS")
+        "Fedora")
+            if `dnf info -q --installed $1 | grep "@System" > /dev/null`; then
+                printf "installed\n"
+            else
+                printf "not installed\n"
+                install_package $1
+            fi
+        ;;
+        "CentOS")
             if `yum -q info $1 | grep "Installed" > /dev/null`; then
                 printf "installed\n"
             else
@@ -135,16 +143,12 @@ update_repo ()
             fi
         ;;
 # this step is only needed for Ubuntu/Debian
-#        "Fedora" | "CentOS")
-#            if `yum check-update > /dev/null`; then
-#                printf "done\n"
-#            fi
-#        ;;
-#        "OpenSUSE" | "openSUSE" | "openSUSU project")
-#            if `zypper refresh > /dev/null`; then
-#                printf "done\n"
-#            fi
-#        ;;
+        "Fedora" | "CentOS")
+            printf "unneeded\n"
+        ;;
+        "OpenSUSE" | "openSUSE" | "openSUSE project")
+            printf "unneeded\n"
+        ;;
         *)
             exit 1
         ;;
@@ -161,7 +165,12 @@ install_package ()
                     printf "done\n"
                 fi
             ;;
-            "Fedora" | "CentOS")
+            "Fedora")
+                if `dnf -q -y install $1`; then
+                    printf "done\n"
+                fi
+            ;;
+            "CentOS")
                 if `yum -q -y install $1`; then
                     printf "done\n"
                 fi
@@ -293,12 +302,12 @@ case "$DISTRO" in
         check_package 'which'
         check_package 'file'
         check_package 'cpio'
-        check_package 'python'
+        check_package 'python3'
         check_package 'python3-pip'
         check_package 'xz'
         check_package 'python3-GitPython'
         check_package 'python3-jinja2'
-        check_package 'SDL-devel'
+        check_package 'sdl12-compat-devel'
         check_package 'xterm'
         check_package 'rpcgen'
         check_package 'mesa-libGL-devel'
