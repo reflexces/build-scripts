@@ -102,9 +102,9 @@ get_board_name() {
         --ok-button "Next" \
         --cancel-button "Back" \
         --radiolist "\nChoose your target board." 15 60 4 \
-        "Achilles Indus SOM" "" OFF \
-        "Achilles Lite SOM" "" OFF \
-        "Achilles Turbo SOM" "" OFF 3>&1 1>&2 2>&3 \
+        "Achilles v2 Indus SOM" "" OFF \
+        "Achilles v2 Lite SOM" "" OFF \
+        "Achilles v2 Turbo SOM" "" OFF 3>&1 1>&2 2>&3 \
     )
     exit_status=$?
     if [ $exit_status -eq 1 ]; then  # <Back> button was pressed
@@ -119,19 +119,19 @@ get_board_name() {
     fi
 
     case $BOARD_SEL in
-        "Achilles Indus SOM")
-            INFO_BOARD="Achilles Indus SOM"
-            BOARD=achilles-indus
+        "Achilles v2 Indus SOM")
+            INFO_BOARD="Achilles v2 Indus SOM"
+            BOARD=achilles-v2-indus
             SOM_VER=indus
         ;;
-        "Achilles Lite SOM")
-            INFO_BOARD="Achilles Lite SOM"
-            BOARD=achilles-lite
+        "Achilles v2 Lite SOM")
+            INFO_BOARD="Achilles v2 Lite SOM"
+            BOARD=achilles-v2-lite
             SOM_VER=lite
         ;;
-        "Achilles Turbo SOM")
-            INFO_BOARD="Achilles Turbo SOM"
-            BOARD=achilles-turbo
+        "Achilles v2 Turbo SOM")
+            INFO_BOARD="Achilles v2 Turbo SOM"
+            BOARD=achilles-v2-turbo
             SOM_VER=turbo
         ;;
         *)

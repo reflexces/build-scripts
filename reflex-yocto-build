@@ -100,9 +100,9 @@ usage()
     echo ""
     echo "Options:"
     echo "  -b, --board [board]               Target development board (required).  Currently supported boards:"
-    echo "                                      achilles-turbo (default if -b not specified)"
-    echo "                                      achilles-indus"
-    echo "                                      achilles-lite"
+    echo "                                      achilles-v2-turbo (default if -b not specified)"
+    echo "                                      achilles-v2-indus"
+    echo "                                      achilles-v2-lite"
     echo "                                      achilles (only valid for branch \"honister\" and older)"
 #   echo "                                      alaric"
 #   echo "                                      comxpress"
@@ -443,22 +443,22 @@ case $BOARD in
             echo ""
             exit 1
         else
-            BOARD_LONG="REFLEX CES Achilles Turbo SOM"
+            BOARD_LONG="REFLEX CES Achilles v2 Turbo SOM"
             BOARD_BASE="achilles"
         fi
     ;;
-    achilles-turbo)
-        BOARD_LONG="REFLEX CES Achilles Turbo SOM"
+    achilles-v2-turbo)
+        BOARD_LONG="REFLEX CES Achilles v2 Turbo SOM"
         BOARD_BASE="achilles"
         SOM_VER="turbo"
     ;;
-    achilles-indus)
-        BOARD_LONG="REFLEX CES Achilles Indus SOM"
+    achilles-v2-indus)
+        BOARD_LONG="REFLEX CES Achilles v2 Indus SOM"
         BOARD_BASE="achilles"
         SOM_VER="indus"
     ;;
-    achilles-lite)
-        BOARD_LONG="REFLEX CES Achilles Lite SOM"
+    achilles-v2-lite)
+        BOARD_LONG="REFLEX CES Achilles v2 Lite SOM"
         BOARD_BASE="achilles"
         SOM_VER="lite"
     ;;
@@ -587,6 +587,6 @@ fetch_or_update_layers meta-intel-fpga https://git.yoctoproject.org/git/meta-int
 fetch_or_update_layers meta-openembedded https://git.openembedded.org/meta-openembedded $YOCTO_BRANCH
 fetch_or_update_layers meta-achilles https://github.com/reflexces/meta-achilles $YOCTO_BRANCH
 # use next line for testing only; comment out line above
-#fetch_or_update_layers meta-achilles ~/work/github/meta-achilles.git
+#fetch_or_update_layers meta-achilles ../../../meta-achilles
 
 build_all
