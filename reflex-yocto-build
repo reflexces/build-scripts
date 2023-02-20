@@ -113,6 +113,7 @@ usage()
     echo ""
     echo "  -i, --image [image]               Yocto image type to build (required).  Only these images names are valid:"
     echo "                                      console (console applications only, default if image not specified)"
+    echo "                                      factory (ramfs used to flash eMMC)"
     echo "                                      u-boot (builds U-Boot bootloader only)"
     echo "                                      kernel (builds Linux kernel only)"
     echo ""
@@ -302,8 +303,13 @@ build_all() {
     sed -i "/VIRTUAL-RUNTIME_init_manager/d" conf/local.conf
 
     echo "MACHINE = \"${MACHINE}\"" >> conf/local.conf
-    echo 'DISTRO_FEATURES:append = " systemd"' >> conf/local.conf
-    echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >> conf/local.conf
+
+    if [ "${BUILD_IMG}" == "${BOARD_BASE}-factory-image" ]; then
+        echo 'VIRTUAL-RUNTIME_init_manager = "busybox"' >> conf/local.conf
+    else
+        echo 'DISTRO_FEATURES:append = " systemd"' >> conf/local.conf
+        echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >> conf/local.conf
+    fi
 
 
     echo -e ${GREEN}
@@ -486,6 +492,11 @@ esac
 case $BUILD_IMG in
     console)
         BUILD_IMG=$BOARD_BASE-console-image
+        IMG_SIZE=58
+    ;;
+    factory)
+        BUILD_IMG=$BOARD_BASE-factory-image
+        MACHINE=$BOARD-factory
         IMG_SIZE=58
     ;;
     u-boot)
