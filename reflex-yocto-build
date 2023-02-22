@@ -546,7 +546,7 @@ fi
 if [ ! -d "$BUILD_DIR" ]; then
     check_disk_space
     check_git_config
-else
+elif [ "${SOURCED_FROM_GSRD_SCRIPT:-0}" -eq 0 ]; then
     printf "\n${BUILD_DIR} directory already exists.\n"
     printf "Maybe you intended to run this in another directory.\n"
     read -r -p "Continue from previous build? [y/N] " response
