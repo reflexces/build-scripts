@@ -103,6 +103,8 @@ usage()
     echo "                                      achilles-v2-turbo (default if -b not specified)"
     echo "                                      achilles-v2-indus"
     echo "                                      achilles-v2-lite"
+    echo "                                      achilles-v5-indus"
+    echo "                                      achilles-v5-lite"
     echo "                                      achilles (only valid for branch \"honister\" and older)"
 #   echo "                                      alaric"
 #   echo "                                      comxpress"
@@ -456,16 +458,31 @@ case $BOARD in
     achilles-v2-turbo)
         BOARD_LONG="REFLEX CES Achilles v2 Turbo SOM"
         BOARD_BASE="achilles"
+        SOM_REV="v2"
         SOM_VER="turbo"
     ;;
     achilles-v2-indus)
         BOARD_LONG="REFLEX CES Achilles v2 Indus SOM"
         BOARD_BASE="achilles"
+        SOM_REV="v2"
         SOM_VER="indus"
     ;;
     achilles-v2-lite)
         BOARD_LONG="REFLEX CES Achilles v2 Lite SOM"
         BOARD_BASE="achilles"
+        SOM_REV="v2"
+        SOM_VER="lite"
+    ;;
+    achilles-v5-indus)
+        BOARD_LONG="REFLEX CES Achilles v5 Indus SOM"
+        BOARD_BASE="achilles"
+        SOM_REV="v5"
+        SOM_VER="indus"
+    ;;
+    achilles-v5-lite)
+        BOARD_LONG="REFLEX CES Achilles v5 Lite SOM"
+        BOARD_BASE="achilles"
+        SOM_REV="v5"
         SOM_VER="lite"
     ;;
     comxpress)
@@ -496,7 +513,7 @@ case $BUILD_IMG in
     ;;
     factory)
         BUILD_IMG=$BOARD_BASE-factory-image
-        MACHINE=$BOARD-factory
+        MACHINE=$BOARD_BASE-$SOM_REV-$SOM_VER-factory
         IMG_SIZE=58
     ;;
     u-boot)
