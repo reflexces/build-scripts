@@ -237,7 +237,7 @@ fetch_or_update_layers() {
         echo " Fetching latest updates for $meta_layer...                        "
         echo "*******************************************************************"
         echo -e ${NC}
-        
+
         pushd $meta_layer > /dev/null
 
         git checkout $git_branch
@@ -250,7 +250,7 @@ fetch_or_update_layers() {
         echo " Downloading source for $meta_layer...                             "
         echo "*******************************************************************"
         echo -e ${NC}
-        
+
         git clone $source_url
         pushd $meta_layer
 
@@ -258,7 +258,7 @@ fetch_or_update_layers() {
 
         popd > /dev/null
     fi
-    
+
     popd > /dev/null
     popd > /dev/null
 }
@@ -327,7 +327,7 @@ build_all() {
     add_bblayers meta-openembedded/meta-oe
     add_bblayers meta-openembedded/meta-networking
     add_bblayers meta-openembedded/meta-python
-    
+
     echo -e ${GREEN}
     echo "*******************************************************************"
     printf " Starting bitbake ${NC}${BUILD_IMG}${GREEN}...\n"
@@ -336,8 +336,10 @@ build_all() {
 
     if bitbake $BUILD_IMG ; then
         # copy the WIC image to an image directory
-        cp -L tmp/deploy/images/$BOARD/$BUILD_IMG-$BOARD.wic ../$BOARD_BASE-emmc-image
-        
+        if [ "${BUILD_IMG}" == "${BOARD_BASE}-console-image" ]; then
+            cp -L tmp/deploy/images/$BOARD/$BUILD_IMG-$BOARD.wic ../$BOARD_BASE-emmc-image
+        fi
+
         # display elapsed build time for successful build
         ELAPSED="$(($SECONDS / 3600)) hrs $((($SECONDS / 60) % 60)) min $(($SECONDS % 60)) sec"
         echo -e ${GREEN}
@@ -346,9 +348,11 @@ build_all() {
         printf " completed successfully in ${NC}${ELAPSED}${GREEN}\n"
         printf " on ${NC}$(date -d "today" +"%m-%d-%Y %H:%M")${GREEN}\n"
         printf "\n"
-        printf " The eMMC WIC image has been copied to the following directory:\n"
-        printf " ${BLUE}${PWD}/../${BOARD_BASE}-emmc-image${GREEN}\n"
-        printf "\n"
+        if [ "${BUILD_IMG}" == "${BOARD_BASE}-console-image" ]; then
+            printf " The eMMC WIC image has been copied to the following directory:\n"
+            printf " ${BLUE}${PWD}/../${BOARD_BASE}-emmc-image${GREEN}\n"
+            printf "\n"
+        fi
         printf " All build output files can be found in the following directory:\n"
         printf " ${BLUE}${PWD}/tmp/deploy/images/${BOARD}${GREEN}\n"
         printf "\n"
