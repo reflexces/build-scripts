@@ -64,9 +64,11 @@ usage()
     echo ""
     echo "Options:"
     echo "  -s, --som [som version]        Valid SOM versions (required):"
-    echo "                                   turbo"
-    echo "                                   indus"
-    echo "                                   lite"
+    echo "                                   v2-indus"
+    echo "                                   v2-lite"
+    echo "                                   v2-turbo"
+    echo "                                   v5-indus"
+    echo "                                   v5-lite"
     echo ""
     echo "  -g, --ghrd [type]              Valid GHRD types (required):"
     echo "                                   pr (partial reconfiguration example)"
@@ -156,12 +158,12 @@ launch_quartus()
     cp src/hdl/top/achilles_${SOM_VER}_ghrd_${GHRD_TYPE}.vhd src/hdl/achilles_ghrd.vhd
 
     {
-    $QTS_TOOL_PATH/$QTS_CMD -t src/script/achilles_ghrd_build_flow.tcl $SOM_VER $GHRD_TYPE
+    $QTS_TOOL_PATH/$QTS_CMD -t src/script/achilles_ghrd_build_flow.tcl $SOM_REV $SOM_VER $GHRD_TYPE
     } 2>&1 | tee -a ${BUILD_DIR}-build.log
 
     # TODO: create_achilles_ghrd_project.tcl script is creating this other .qpf, need to fix in that script; manually remove for now
-    if [ -f achilles_${SOM_VER}_ghrd.qpf ]; then
-        rm achilles_${SOM_VER}_ghrd.qpf
+    if [ -f achilles_${SOM_REV}_${SOM_VER}_ghrd.qpf ]; then
+        rm achilles_${SOM_REV}_${SOM_VER}_ghrd.qpf
     fi
 } # end launch_quartus
 
@@ -185,14 +187,33 @@ while [ "$1" != "" ]; do
     case $1 in
         -s | --som)
             shift
-                if [[ "$1" = "turbo" || "$1" = "indus" || "$1" = "lite" ]]; then
-                    SOM_VER=$1
-                else
-                    echo ""
-                    echo "Invalid SOM version \"$1\" specified.  Use --help for valid options."
-                    echo ""
-                    exit 1
-                fi
+                case "$1" in
+                    v2-indus)
+                        SOM_REV="v2"
+                        SOM_VER="indus"
+                    ;;
+                    v2-lite)
+                        SOM_REV="v2"
+                        SOM_VER="lite"
+                    ;;
+                    v2-turbo)
+                        SOM_REV="v2"
+                        SOM_VER="turbo"
+                    ;;
+                    v5-indus)
+                        SOM_REV="v5"
+                        SOM_VER="indus"
+                    ;;
+                    v5-lite)
+                        SOM_REV="v5"
+                        SOM_VER="lite"
+                    ;;
+                    *)
+                        echo ""
+                        echo "Invalid SOM version \"$1\" specified.  Use --help for valid options."
+                        echo ""
+                        exit 1
+                esac
         ;;
         -g | --ghrd)
             shift
@@ -239,7 +260,7 @@ check_quartus_tools
 
 # use default director if user specified directory not given
 if [ $USER_DIR -eq 0 ]; then
-    BUILD_DIR=achilles-$SOM_VER-ghrd-$GHRD_TYPE-qpp_v$QTS_VER
+    BUILD_DIR=achilles-${SOM_REV:?}-${SOM_VER:?}-ghrd-${GHRD_TYPE:?}-qpp_v${QTS_VER:?}
 fi
 
 # start a build time counter
@@ -252,7 +273,7 @@ if launch_quartus ; then
     ELAPSED="$(($SECONDS / 3600)) hrs $((($SECONDS / 60) % 60)) min $(($SECONDS % 60)) sec"
     echo -e ${GREEN}
     printf "*******************************************************************\n"
-    printf " Achilles GHRD build for ${SOM_VER} SOM\n"
+    printf " Achilles GHRD build for ${SOM_REV}-${SOM_VER} SOM\n"
     printf " completed in ${NC}${ELAPSED}${GREEN}\n"
     printf " on ${NC}$(date -d "today" +"%d-%b-%Y %H:%M")${GREEN}\n"
     printf "*******************************************************************\n"

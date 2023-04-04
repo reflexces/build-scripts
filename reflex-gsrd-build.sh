@@ -97,19 +97,21 @@ EOF
 }
 
 get_board_name() {
-    BOARD_SEL=$(whiptail \
+    BOARD=$(whiptail \
         --title "Select Board" \
         --ok-button "Next" \
         --cancel-button "Back" \
         --radiolist "\nChoose your target board." 15 60 4 \
-        "Achilles v2 Indus SOM" "" OFF \
-        "Achilles v2 Lite SOM" "" OFF \
-        "Achilles v2 Turbo SOM" "" OFF 3>&1 1>&2 2>&3 \
+        "achilles-v2-indus" "Achilles v2 Indus SOM" OFF \
+        "achilles-v2-lite" "Achilles v2 Lite SOM" OFF \
+        "achilles-v2-turbo" "Achilles v2 Turbo SOM" OFF \
+        "achilles-v5-indus" "Achilles v5 Indus SOM" OFF \
+        "achilles-v5-lite" "Achilles v5 Lite SOM" OFF 3>&1 1>&2 2>&3 \
     )
     exit_status=$?
     if [ $exit_status -eq 1 ]; then  # <Back> button was pressed
         script_intro
-    elif [ $exit_status -eq 0 ] && [ "$BOARD_SEL" = "" ]; then
+    elif [ $exit_status -eq 0 ] && [ "$BOARD" = "" ]; then
         warn_empty_selection
         get_board_name
     elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
@@ -118,21 +120,31 @@ get_board_name() {
         exit
     fi
 
-    case $BOARD_SEL in
-        "Achilles v2 Indus SOM")
+    case $BOARD in
+        "achilles-v2-indus")
             INFO_BOARD="Achilles v2 Indus SOM"
-            BOARD=achilles-v2-indus
+            SOM_REV=v2
             SOM_VER=indus
         ;;
-        "Achilles v2 Lite SOM")
+        "achilles-v2-lite")
             INFO_BOARD="Achilles v2 Lite SOM"
-            BOARD=achilles-v2-lite
+            SOM_REV=v2
             SOM_VER=lite
         ;;
-        "Achilles v2 Turbo SOM")
+        "achilles-v2-turbo")
             INFO_BOARD="Achilles v2 Turbo SOM"
-            BOARD=achilles-v2-turbo
+            SOM_REV=v2
             SOM_VER=turbo
+        ;;
+        "achilles-v5-indus")
+            INFO_BOARD="Achilles v5 Indus SOM"
+            SOM_REV=v5
+            SOM_VER=indus
+        ;;
+        "achilles-v5-lite")
+            INFO_BOARD="Achilles v5 Lite SOM"
+            SOM_REV=v5
+            SOM_VER=lite
         ;;
         *)
             exit 1
@@ -497,9 +509,9 @@ if [ $BUILD_GHRD -eq 1 ]; then
     fi
 
     if [[ $USER_QTS_VER -eq 1 || $USER_QTS_TOOL_PATH -eq 1 ]]; then
-        ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE -q $QTS_VER -t $QTS_TOOL_PATH
+        ./achilles-ghrd-build.sh -s $SOM_REV-$SOM_VER -g $GHRD_TYPE -q $QTS_VER -t $QTS_TOOL_PATH
     else
-        ./achilles-ghrd-build.sh -s $SOM_VER -g $GHRD_TYPE
+        ./achilles-ghrd-build.sh -s $SOM_REV-$SOM_VER -g $GHRD_TYPE
     fi
 fi
 

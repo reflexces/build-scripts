@@ -99,21 +99,39 @@ EOF
 
     if [ $SOURCED_FROM_GSRD_SCRIPT -eq 1 ]; then
         case $BOARD in
-            "achilles-indus")
+            "achilles-v2-indus")
+                INFO_BOARD="Achilles v2 Indus SOM"
                 BOARD_FAM=achilles
-                INFO_BOARD="Achilles Indus SOM"
+                BOARD_REV=v2
+                BOARD_VER=indus
             ;;
-            "achilles-lite")
+            "achilles-v2-lite")
+                INFO_BOARD="Achilles v2 Lite SOM"
                 BOARD_FAM=achilles
-                INFO_BOARD="Achilles Lite SOM"
+                BOARD_REV=v2
+                BOARD_VER=lite
             ;;
-            "achilles-turbo")
+            "achilles-v2-turbo")
+                INFO_BOARD="Achilles v2 Turbo SOM"
                 BOARD_FAM=achilles
-                INFO_BOARD="Achilles Turbo SOM"
+                BOARD_REV=v2
+                BOARD_VER=turbo
             ;;
-#            "comxpress")
-#                BOARD_FAM=comxpress
-#            ;;
+            "achilles-v5-indus")
+                INFO_BOARD="Achilles v5 Indus SOM"
+                BOARD_FAM=achilles
+                BOARD_REV=v5
+                BOARD_VER=indus
+            ;;
+            "achilles-v5-lite")
+                INFO_BOARD="Achilles v5 Lite SOM"
+                BOARD_FAM=achilles
+                BOARD_REV=v5
+                BOARD_VER=lite
+            ;;
+#           "comxpress")
+#               BOARD_FAM=comxpress
+#           ;;
             *)
                 exit 1
             ;;
@@ -251,19 +269,21 @@ file_browser()
 }
 
 get_board_name() {
-    BOARD_SEL=$(whiptail \
+    BOARD=$(whiptail \
         --title "Select Target Board" \
         --ok-button "Next" \
         --cancel-button "Back" \
         --radiolist "\nChoose the target board for programming." 0 0 0 \
-        "Achilles Indus SOM" "" OFF \
-        "Achilles Lite SOM" "" OFF \
-        "Achilles Turbo SOM" "" OFF 3>&1 1>&2 2>&3 \
+        "achilles-v2-indus" "Achilles v2 Indus SOM" OFF \
+        "achilles-v2-lite" "Achilles v2 Lite SOM" OFF \
+        "achilles-v2-turbo" "Achilles v2 Turbo SOM" OFF \
+        "achilles-v5-indus" "Achilles v5 Indus SOM" OFF \
+        "achilles-v5-lite" "Achilles v5 Lite SOM" OFF 3>&1 1>&2 2>&3 \
     )
     exit_status=$?
     if [ $exit_status -eq 1 ]; then  # <Back> button was pressed
         script_intro
-    elif [ $exit_status -eq 0 ] && [ "$BOARD_SEL" = "" ]; then
+    elif [ $exit_status -eq 0 ] && [ "$BOARD" = "" ]; then
         warn_empty_selection
         get_board_name
     elif [ $exit_status -eq 0 ]; then  # <Next> button was pressed
@@ -272,21 +292,36 @@ get_board_name() {
         exit
     fi
 
-    case $BOARD_SEL in
-        "Achilles Indus SOM")
-            INFO_BOARD="Achilles Indus SOM"
-            BOARD=achilles-indus
+    case $BOARD in
+        "achilles-v2-indus")
+            INFO_BOARD="Achilles v2 Indus SOM"
             BOARD_FAM=achilles
+            BOARD_REV=v2
+            BOARD_VER=indus
         ;;
-        "Achilles Lite SOM")
-            INFO_BOARD="Achilles Lite SOM"
-            BOARD=achilles-lite
+        "achilles-v2-lite")
+            INFO_BOARD="Achilles v2 Lite SOM"
             BOARD_FAM=achilles
+            BOARD_REV=v2
+            BOARD_VER=lite
         ;;
-        "Achilles Turbo SOM")
-            INFO_BOARD="Achilles Turbo SOM"
-            BOARD=achilles-turbo
+        "achilles-v2-turbo")
+            INFO_BOARD="Achilles v2 Turbo SOM"
             BOARD_FAM=achilles
+            BOARD_REV=v2
+            BOARD_VER=turbo
+        ;;
+        "achilles-v5-indus")
+            INFO_BOARD="Achilles v5 Indus SOM"
+            BOARD_FAM=achilles
+            BOARD_REV=v5
+            BOARD_VER=indus
+        ;;
+        "achilles-v5-lite")
+            INFO_BOARD="Achilles v5 Lite SOM"
+            BOARD_FAM=achilles
+            BOARD_REV=v5
+            BOARD_VER=lite
         ;;
 #        "comxpress")
 #            BOARD_FAM=comxpress
@@ -424,7 +459,7 @@ get_image_file_source() {
             popd > /dev/null
         ;;
         "BUILD")
-            IMAGE_PATH=("./${BOARD}-yocto-poky-$YOCTO_BRANCH/${BOARD}-build-files/tmp/deploy/images/${BOARD}")
+            IMAGE_PATH=("./${BOARD_FAM}-yocto-poky-$YOCTO_BRANCH/${BOARD_FAM}-build-files/tmp/deploy/images/${BOARD}")
 
             for i in "${!src_file_array[@]}"
             do
@@ -736,7 +771,7 @@ program_mmc() {
             fi
         ;;
         "UPDATE KERNEL")
-            IMAGE_NAME=("zImage" "socfpga_arria10_${BOARD_FAM}.dtb")
+            IMAGE_NAME=("zImage" "socfpga_arria10_${BOARD_FAM}_${BOARD_REV}_${BOARD_VER}.dtb")
             get_image_file_source "${IMAGE_NAME[@]}"
             get_quartus_info
             ${BOARD_FAM}_pgm_steps
