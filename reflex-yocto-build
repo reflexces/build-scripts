@@ -116,8 +116,8 @@ usage()
     echo "  -i, --image [image]               Yocto image type to build (required).  Only these images names are valid:"
     echo "                                      console (console applications only, default if image not specified)"
     echo "                                      factory (ramfs used to flash eMMC)"
-    echo "                                      u-boot (builds U-Boot bootloader only)"
-    echo "                                      kernel (builds Linux kernel only)"
+    echo "                                      virtual/bootloader (builds U-Boot bootloader only)"
+    echo "                                      virtual/kernel (builds Linux kernel only)"
     echo ""
     echo "  -o, --override-branch [image]     Override the default Yocto branch to select"
     echo "                                    an older branch (optional).  Defaults to"
@@ -520,13 +520,13 @@ case $BUILD_IMG in
         MACHINE=$BOARD_BASE-$SOM_REV-$SOM_VER-factory
         IMG_SIZE=58
     ;;
-    u-boot)
+    virtual/bootloader)
         BUILD_IMG=virtual/bootloader
         IMG_SIZE=11
         KERNEL_VER=NA
         GHRD_BRANCH=NA
     ;;
-    kernel)
+    virtual/kernel)
         BUILD_IMG=virtual/kernel
         IMG_SIZE=13
         UBOOT_VER=NA
