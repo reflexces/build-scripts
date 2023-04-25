@@ -65,10 +65,10 @@
 SOURCED_FROM_GSRD_SCRIPT=0
 
 # Script version variables
-YOCTO_REL=4.0.1
+YOCTO_REL=4.0.8
 YOCTO_BRANCH=kirkstone
 OVERRIDE_BRANCH=0
-SCRIPT_VERSION="Yocto ${YOCTO_BRANCH} Build Script"
+SCRIPT_VERSION="Yocto ${YOCTO_BRANCH}-${YOCTO_REL} Build Script"
 
 # Other configuration variables
 # set a default board for the build, can be changed with -b option
@@ -96,7 +96,7 @@ NC='\033[0m' # No Color
 usage()
 {
     echo "Usage: ./reflex-yocto-build [options]"
-    echo "Yocto Project build script for Yocto Poky v${YOCTO_REL} ${YOCTO_BRANCH}"
+    echo "Yocto Project build script for Yocto Poky ${YOCTO_BRANCH}-${YOCTO_REL}"
     echo ""
     echo "Options:"
     echo "  -b, --board [board]               Target development board (required).  Currently supported boards:"
@@ -121,7 +121,7 @@ usage()
     echo ""
     echo "  -o, --override-branch [image]     Override the default Yocto branch to select"
     echo "                                    an older branch (optional).  Defaults to"
-    echo "                                    latest Yocto/Poky branch ($YOCTO_BRANCH)."
+    echo "                                    latest Yocto/Poky branch ($YOCTO_BRANCH-$YOCTO_REL)."
     echo ""
     echo "  -h, --help                        Display this help message and exit."
     echo ""
@@ -422,7 +422,11 @@ while [ "$1" != "" ]; do
         ;;
         -o | --override-branch)
             shift
-            YOCTO_BRANCH=$1
+            YOCTO_BRANCH=`echo $1 | cut -d "-" -f 1`
+            YOCTO_REL=`echo $1 | cut -d "-" -f 2`
+            if [ $YOCTO_REL == $YOCTO_BRANCH ]; then
+                YOCTO_REL=""
+            fi
             OVERRIDE_BRANCH=1
         ;;
         -h | --help)
@@ -569,7 +573,7 @@ if [ "${SOURCED_FROM_GSRD_SCRIPT:-0}" -eq 0 ]; then
     # print introduction, ask for confirmation
     echo -e ${GREEN}
     printf "*******************************************************************\n"
-    printf " This is the Yocto v${YOCTO_REL} build script for the              \n"
+    printf " This is the Yocto ${YOCTO_BRANCH}-${YOCTO_REL} build script for the\n"
     printf " ${BOARD_LONG}                                                     \n"
     printf " Current build configuration:                                      \n"
     #printf " Run script with --help to view customizable perameters.           \n"
@@ -585,10 +589,10 @@ if [ "${SOURCED_FROM_GSRD_SCRIPT:-0}" -eq 0 ]; then
     printf " If this is your first time using the Yocto Project OpenEmbedded   \n"
     printf " build system on this computer, it may be necessary to exit this   \n"
     printf " script and first install some build tools and essential packages  \n"
-    printf " as documented in the Yocto Project Reference Manual v${YOCTO_REL}.  You\n"
-    printf " should run the ${NC}yocto-packages.sh${GREEN} script with root privileges as\n"
-    printf " instructed on the rocketboards.org page to check for and install  \n"
-    printf " any missing build tools and packages.                             \n"
+    printf " as documented in the Yocto Project Reference Manual v${YOCTO_REL}.\n"
+    printf " You should run the ${NC}yocto-packages.sh${GREEN} script with     \n"
+    printf " root privileges as instructed on the rocketboards.org page to     \n"
+    printf " check for and install any missing build tools and packages.       \n"
     printf "*******************************************************************\n"
     echo -e ${NC}
 
@@ -613,8 +617,14 @@ mkdir -p $BUILD_DIR/$BOARD_BASE-build-files
 # start a build time counter
 SECONDS=0
 
+if [ ! -z $YOCTO_REL ]; then
+    POKY_BRANCH="$YOCTO_BRANCH-$YOCTO_REL"
+else
+    POKY_BRANCH=$YOCTO_BRANCH
+fi
+
 # additional layers required for your build should be added here
-fetch_or_update_layers poky https://git.yoctoproject.org/git/poky $YOCTO_BRANCH
+fetch_or_update_layers poky https://git.yoctoproject.org/git/poky $POKY_BRANCH
 fetch_or_update_layers meta-intel-fpga https://git.yoctoproject.org/git/meta-intel-fpga $YOCTO_BRANCH
 fetch_or_update_layers meta-openembedded https://git.openembedded.org/meta-openembedded $YOCTO_BRANCH
 fetch_or_update_layers meta-achilles https://github.com/reflexces/meta-achilles $YOCTO_BRANCH
