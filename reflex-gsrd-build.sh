@@ -42,7 +42,7 @@ LATEST_BRANCH=kirkstone
 
 # latest tested version of Quartus Prime Pro
 # user is given option to choose different version, but results are not guaranteed
-QTS_VER=22.1
+QTS_VER=23.1
 
 BUILD_GHRD=0
 BUILD_YOCTO=0
@@ -246,8 +246,8 @@ get_quartus_info() {
         --ok-button "Next" \
         --cancel-button "Back" \
         --radiolist "\nChoose Quartus Prime Pro version for GHRD build." 15 70 4 \
-        "22.1" "Latest tested and supported version" ON \
-        "21.3" "Minimal testing done" OFF \
+        "23.1" "Latest tested and supported version" ON \
+        "22.1" "Minimal testing done" OFF \
         "Other" "Manually enter the Quartus version (in next menu)." OFF 3>&1 1>&2 2>&3 \
     )
 
@@ -264,11 +264,11 @@ get_quartus_info() {
     fi
 
     case $QTS_VER_SEL in
+        "23.1")
+            QTS_VER=23.1
+        ;;
         "22.1")
             QTS_VER=22.1
-        ;;
-        "21.3")
-            QTS_VER=21.3
             USER_QTS_VER=1
         ;;
         "Other")

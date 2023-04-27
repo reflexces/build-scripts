@@ -45,7 +45,7 @@ OS_IS_WINDOWS=$(uname -a | grep -ic Microsoft)
 # latest tested version of Quartus Prime Pro
 # version used is not critical since we are only using programmer function in this script
 # any recent version (20.3 or newer) should work
-QTS_VER=22.1
+QTS_VER=23.1
 
 # when this script is launched stand-alone, this is set to 0
 # when launched from the GSRD build script, this is set to 1

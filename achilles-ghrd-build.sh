@@ -41,7 +41,7 @@ OS_IS_WINDOWS=$(uname -a | grep -ic Microsoft)
 
 # latest tested version of Quartus Prime Pro
 # override with -q option, but results are not guaranteed
-QTS_VER=22.1
+QTS_VER=23.1
 SUPPORTED_QTS_VER=$QTS_VER
 
 USER_DIR=0
