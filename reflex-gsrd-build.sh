@@ -38,7 +38,7 @@
 #################################################
 
 OS_IS_WINDOWS=$(uname -a | grep -ic Microsoft)
-LATEST_BRANCH=kirkstone
+LATEST_BRANCH="kirkstone-4.0.8"
 
 # latest tested version of Quartus Prime Pro
 # user is given option to choose different version, but results are not guaranteed
