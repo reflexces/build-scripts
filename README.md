@@ -2,7 +2,8 @@
 
 This repository contains build scripts for use with supported REFLEX CES boards using Intel SoC FPGAs.
 
-The primary script is **reflex-gsrd-build.sh**.  The script uses a series of menus to choose the build task(s) to run, apply the required settings for each task, and then begin processing those tasks by downloading and launching other scripts.
+The primary script is **reflex-gsrd-build.sh**.  The script uses a series of menus to choose the build task(s) to run,
+apply the required settings for each task, and then begin processing those tasks by downloading and launching other scripts.
 
 System reference design build tasks consist of:
 1. Building the FPGA reference design (GHRD).
@@ -11,20 +12,20 @@ System reference design build tasks consist of:
 
 To use the script, open a terminal console and create a directory to work from, for example:
 ```
-mkdir achilles-gsrd-2022.06
-cd achilles-gsrd-2022.06
+mkdir achilles-gsrd-2023.07
+cd achilles-gsrd-2023.07
 ```
 
 Then, install required packages used by Yocto and other build tasks:
 ```
-wget https://raw.githubusercontent.com/reflexces/build-scripts/master/yocto-packages.sh
+wget https://raw.githubusercontent.com/reflexces/build-scripts/2023.07/yocto-packages.sh
 chmod +x yocto-packages.sh
 sudo ./yocto-packages.sh
 ```
 
 Download and run the GSRD Build Script:
 ```
-wget https://raw.githubusercontent.com/reflexces/build-scripts/master/reflex-gsrd-build.sh
+wget https://raw.githubusercontent.com/reflexces/build-scripts/2023.07/reflex-gsrd-build.sh
 chmod +x reflex-gsrd-build.sh
 ./reflex-gsrd-build.sh
 ```
