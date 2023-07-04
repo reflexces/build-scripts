@@ -51,6 +51,9 @@
 # 2022.12
 #   - Use meta-intel-fpga layer branchs instead of master
 #
+# 2023.07
+#   - Add Achilles V5
+#
 # TODO: add dependecy checking to this sript (currently in yocto-packages.sh because the installation
 #       of packages, if necessary, requires root privileges); this script cannot run as root
 # TODO: add parameters to allow for more build customization (u-boot & kernel version, etc)
@@ -74,7 +77,7 @@ SCRIPT_VERSION="Yocto ${YOCTO_BRANCH}-${YOCTO_REL} Build Script"
 # set a default board for the build, can be changed with -b option
 BOARD_LONG="not specified"
 USER_DIR=0
-GSRD_REL=2022.06
+GSRD_REL=2023.07
 GHRD_BRANCH=ghrd-v23.1
 UBOOT_VER=v2021.07
 KERNEL_VER=v5.10
@@ -623,11 +626,20 @@ else
     POKY_BRANCH=$YOCTO_BRANCH
 fi
 
+case $YOCTO_BRANCH in
+    kirkstone)
+        ACHILLES_BRANCH=$YOCTO_BRANCH-$GSRD_REL
+    ;;
+    *)
+        ACHILLES_BRANCH=$YOCTO_BRANCH
+    ;;
+esac
+
 # additional layers required for your build should be added here
 fetch_or_update_layers poky https://git.yoctoproject.org/git/poky $POKY_BRANCH
 fetch_or_update_layers meta-intel-fpga https://git.yoctoproject.org/git/meta-intel-fpga $YOCTO_BRANCH
 fetch_or_update_layers meta-openembedded https://git.openembedded.org/meta-openembedded $YOCTO_BRANCH
-fetch_or_update_layers meta-achilles https://github.com/reflexces/meta-achilles $YOCTO_BRANCH
+fetch_or_update_layers meta-achilles https://github.com/reflexces/meta-achilles $ACHILLES_BRANCH
 # use next line for testing only; comment out line above
 #fetch_or_update_layers meta-achilles ../../../meta-achilles
 
