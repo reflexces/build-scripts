@@ -52,9 +52,10 @@ QTS_VER=23.1
 SOURCED_FROM_GSRD_SCRIPT=0
 
 #LATEST_RELEASE_URL=https://github.com/reflexces/meta-achilles/releases/download/v2021.12
-LATEST_RELEASE_URL=https://github.com/reflexces/meta-achilles/releases/download/v2022.06
+#LATEST_RELEASE_URL=https://github.com/reflexces/meta-achilles/releases/download/v2022.06
+LATEST_RELEASE_URL=https://github.com/reflexces/meta-achilles/releases/download/kirkstone-2023.07
 
-PROG_FILES_URL=https://raw.githubusercontent.com/reflexces/build-scripts/master/prog-files
+PROG_FILES_URL=https://raw.githubusercontent.com/reflexces/build-scripts/2023.07/prog-files
 
 YOCTO_IMG=console
 YOCTO_BRANCH=kirkstone
